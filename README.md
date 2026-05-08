@@ -4,6 +4,8 @@ Reddit monitoring for people who are tired of manually scrolling for leads.
 
 ![RedSignal](screenshots/RedSignal.gif)
 
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?style=for-the-badge&logo=buy-me-a-coffee&logoColor=white)](https://buymeacoffee.com/ivucicev)
+
 ---
 
 ## Why this exists
