@@ -7,7 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy app
-COPY app.py .
+COPY *.py .
 COPY static/ static/
 
 # Persistent data lives in /app/data (mapped as a volume)
