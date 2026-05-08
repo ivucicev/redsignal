@@ -1060,14 +1060,39 @@ function cardHTML(hit, isHistory = false) {
   else if (hit.filter_result?.passed === false)
     filterBadge = '<span class="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-100 font-medium">✗ Rejected</span>';
 
-  const steps = (hit.filter_result?.results || []).map(r => {
-    const cls = r.skipped ? 'text-slate-400' : r.passed === false ? 'text-red-500' : 'text-emerald-600';
-    return `<div class="text-xs ${cls}"><span class="font-medium">${esc(r.step)}:</span> ${r.skipped?'skipped':r.error?esc(r.error):esc(r.response||'')}</div>`;
-  }).join('');
+  const steps = (() => {
+    const results = hit.filter_result?.results || [];
+    if (!results.length) return '';
+    const items = results.map((r, i) => {
+      const isLast = i === results.length - 1;
+      let icon, dotCls, labelCls;
+      if (r.skipped) {
+        icon    = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg>`;
+        dotCls  = 'bg-slate-200 text-slate-400';
+        labelCls= 'text-slate-400';
+      } else if (r.error || r.passed === false) {
+        icon    = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
+        dotCls  = 'bg-red-100 text-red-500';
+        labelCls= 'text-red-600';
+      } else {
+        icon    = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+        dotCls  = 'bg-emerald-100 text-emerald-600';
+        labelCls= 'text-emerald-700';
+      }
+      return `<div class="flex items-center gap-1 flex-shrink-0">
+        <div class="flex items-center gap-1">
+          <div class="w-4 h-4 rounded-full flex items-center justify-center ${dotCls}">${icon}</div>
+          <span class="text-[11px] font-medium ${labelCls} whitespace-nowrap">${esc(r.step)}</span>
+        </div>
+        ${!isLast ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>` : ''}
+      </div>`;
+    });
+    return items.join('');
+  })();
 
   const dimmed      = hit.filter_result?.passed === false ? 'opacity-60' : '';
   const noClick     = hit.analyzing ? 'opacity-50 pointer-events-none' : '';
-  const analyzeCall = `analyzeHit('${hit.id}',null,null,'${hit.listener_id||''}',${isHistory})`;
+  const analyzeCall = `analyzeHit('${hit.id}',null,undefined,'${hit.listener_id||''}',${isHistory})`;
 
   return `
     <div class="card p-4 hover:border-slate-200 transition-all ${dimmed}">
@@ -1088,7 +1113,7 @@ function cardHTML(hit, isHistory = false) {
             <span class="text-xs font-mono bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-md">${esc(hit.match||'')}</span>
             ${hit.reply_draft ? '<span class="text-xs text-violet-500 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-md">Draft saved</span>' : ''}
           </div>
-          ${steps ? `<div class="mt-2.5 pt-2.5 border-t border-slate-100 space-y-1">${steps}</div>` : ''}
+          ${steps ? `<div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center gap-1 flex-wrap">${steps}</div>` : ''}
         </div>
         <div class="flex flex-col gap-1.5 flex-shrink-0 ml-2">
           <a href="${esc(hit.url||'')}" target="_blank" rel="noopener"
@@ -1119,7 +1144,7 @@ async function analyzeHit(hitId, filtersOverride, credOverride, listenerId, isHi
 
   const lst     = (cfg.listeners||[]).find(l => l.id === (listenerId || hit.listener_id));
   const filters = filtersOverride || (lst?.filters||[]).filter(f => f.enabled);
-  const credId  = credOverride  !== undefined ? credOverride : (lst?.ai_credential_id||null);
+  const credId  = credOverride ?? (lst?.ai_credential_id || null);
 
   if (!filters.length) { showToast('No AI filter steps for this listener', 'gray'); return; }
 

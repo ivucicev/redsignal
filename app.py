@@ -327,7 +327,11 @@ def save_config(cfg: dict) -> None:
                  l.get("reddit_credential_id"), l.get("ai_credential_id"), i),
             )
         if "product_context" in cfg:
-            set_setting("product_context", cfg["product_context"] or "")
+            db.execute(
+                "INSERT INTO settings(key,value) VALUES(?,?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                ("product_context", cfg["product_context"] or ""),
+            )
 
 
 def migrate_from_json() -> None:
