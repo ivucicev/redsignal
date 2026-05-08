@@ -2,7 +2,7 @@
 
 Reddit monitoring for people who are tired of manually scrolling for leads.
 
-![RedSignal home screen](docs/screenshot-home.png)
+![RedSignal](screenshots/RedSignal.gif)
 
 ---
 
@@ -30,15 +30,19 @@ Everything is stored locally in SQLite. No data leaves your machine except the R
 
 **Live feed**
 
-![Live feed](docs/screenshot-home.png)
+![Live feed](screenshots/home.png)
 
 **Analytics**
 
-![Analytics dashboard](docs/screenshot-stats.png)
+![Analytics dashboard](screenshots/dash.png)
 
 **Listener settings**
 
-![Listener configuration](docs/screenshot-listener.png)
+![Listener configuration](screenshots/listener.png)
+
+**Vault**
+
+![Vault](screenshots/vaults.png)
 
 ---
 
