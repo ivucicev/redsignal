@@ -33,3 +33,5 @@ config.json.bak
 
 # Preview helper (not part of the app)
 static/readme-preview.html
+
+CLAUDE.md

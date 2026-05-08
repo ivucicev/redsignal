@@ -179,6 +179,7 @@
       <div class="flex items-center bg-slate-100 rounded-xl p-0.5">
         <button onclick="setViewMode('live')"    id="btn-live"    class="view-btn active">● Live</button>
         <button onclick="setViewMode('history')" id="btn-history" class="view-btn">History</button>
+        <button onclick="setViewMode('board')"   id="btn-board"   class="view-btn">Board</button>
       </div>
       <!-- Live controls -->
       <div id="live-controls" class="flex items-center gap-4">
@@ -258,6 +259,13 @@
     <!-- Empty -->
     <div id="h-empty" class="hidden flex flex-col items-center justify-center py-16 text-center">
       <div class="text-slate-400 text-sm">No hits match your filters.</div>
+    </div>
+  </div>
+
+  <!-- Board view -->
+  <div id="board-feed" class="hidden flex-1 overflow-x-auto overflow-y-hidden">
+    <div class="flex gap-3 h-full p-4" style="min-width:max-content">
+      <!-- columns injected by renderBoard() -->
     </div>
   </div>
 
@@ -533,13 +541,49 @@ function toggleStatusMenu(uid, hitId, listenerId) {
 }
 
 async function setHitStatus(hitId, listenerId, status, uid) {
-  // Update in-memory
-  const hit = hits.find(h => h.id === hitId);
-  if (hit) hit.status = status;
-  // Close menu and re-render badge
   document.getElementById(`stm-${uid}`)?.classList.add('hidden');
-  updateCard(hitId, uid.endsWith('-h'));
-  // Persist
+
+  const isBoard = uid.endsWith('-b');
+  const isHist  = uid.endsWith('-h');
+
+  // Update whichever store holds this hit
+  const liveHit = hits.find(h => h.id === hitId);
+  if (liveHit) liveHit.status = status;
+  if (historyHitsMap[hitId]) historyHitsMap[hitId].status = status;
+
+  if (isBoard) {
+    // Remove card from its current column and inject into the new one
+    const oldEl = document.querySelector(`[data-board-hid="${CSS.escape(hitId)}"]`);
+    if (oldEl) oldEl.remove();
+    const hit = historyHitsMap[hitId] || { id: hitId, listener_id: listenerId, status };
+    hit.status = status;
+    const newCol = document.getElementById(`bcol-${status}`);
+    if (newCol) {
+      // Clear empty placeholder if present
+      const placeholder = newCol.querySelector('.text-slate-400');
+      if (placeholder && newCol.children.length === 1) placeholder.remove();
+      const el = document.createElement('div');
+      el.setAttribute('data-board-hid', hitId);
+      el.innerHTML = boardCardHTML(hit);
+      newCol.prepend(el);
+    }
+    // Update column counts
+    BOARD_COLS.forEach(col => {
+      const c = document.getElementById(`bcnt-${col.status}`);
+      if (!c) return;
+      const count = document.getElementById(`bcol-${col.status}`)
+        ?.querySelectorAll('[data-board-hid]').length || 0;
+      c.textContent = count;
+    });
+  } else if (isHist) {
+    // Re-render history card badge directly
+    const el = document.querySelector(`[data-hid="${CSS.escape(hitId + '-h')}"]`);
+    if (el && historyHitsMap[hitId]) el.innerHTML = cardHTML(historyHitsMap[hitId], true);
+  } else {
+    updateCard(hitId, false);
+  }
+
+  // Persist to DB
   await apiFetch(`/api/hits/${hitId}/status`, {
     method: 'PATCH', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ status, listener_id: listenerId || null }),
@@ -834,6 +878,21 @@ async function onMsg(data) {
     _updateHitCounter(true);
     document.getElementById('empty').style.display = 'none';
     prependCard(data);
+    // Also push into board "New" column if board is active
+    if (viewMode === 'board') {
+      historyHitsMap[data.id] = data;
+      const newCol = document.getElementById('bcol-new');
+      if (newCol) {
+        const placeholder = newCol.querySelector('.text-slate-400');
+        if (placeholder && newCol.children.length === 1) placeholder.remove();
+        const el = document.createElement('div');
+        el.setAttribute('data-board-hid', data.id);
+        el.innerHTML = boardCardHTML(data);
+        newCol.prepend(el);
+        const cnt = document.getElementById('bcnt-new');
+        if (cnt) cnt.textContent = (parseInt(cnt.textContent)||0) + 1;
+      }
+    }
     _notifyHit(data);
     if (autoFilter) {
       const lst = (cfg.listeners||[]).find(l => l.id === data.listener_id);
@@ -873,14 +932,16 @@ function updateStatusDots() {
 // ── View mode (Live / History) ──────────────────────────────────────────────
 function setViewMode(mode) {
   viewMode = mode;
-  const isHistory = mode === 'history';
-  document.getElementById('btn-live').classList.toggle('active', !isHistory);
-  document.getElementById('btn-history').classList.toggle('active', isHistory);
-  document.getElementById('feed').classList.toggle('hidden', isHistory);
-  document.getElementById('history-feed').classList.toggle('hidden', !isHistory);
-  document.getElementById('history-toolbar').classList.toggle('hidden', !isHistory);
-  document.getElementById('live-controls').classList.toggle('hidden', isHistory);
-  if (isHistory) loadHistory(true);
+  document.getElementById('btn-live').classList.toggle('active',    mode === 'live');
+  document.getElementById('btn-history').classList.toggle('active', mode === 'history');
+  document.getElementById('btn-board').classList.toggle('active',   mode === 'board');
+  document.getElementById('feed').classList.toggle('hidden',          mode !== 'live');
+  document.getElementById('history-feed').classList.toggle('hidden',  mode !== 'history');
+  document.getElementById('history-toolbar').classList.toggle('hidden',mode !== 'history');
+  document.getElementById('live-controls').classList.toggle('hidden',  mode !== 'live');
+  document.getElementById('board-feed').classList.toggle('hidden',     mode !== 'board');
+  if (mode === 'history') loadHistory(true);
+  if (mode === 'board')   loadBoard();
 }
 
 // ── History ─────────────────────────────────────────────────────────────────
@@ -920,6 +981,7 @@ async function loadHistory(reset = false) {
 
   const container = document.getElementById('history-cards');
   for (const hit of data.hits) {
+    historyHitsMap[hit.id] = hit;
     const el = document.createElement('div');
     el.setAttribute('data-hid', hit.id + '-h');
     el.innerHTML = cardHTML(hit, true);
@@ -2006,6 +2068,107 @@ function renderMonthlyTable(rows) {
         }).join('')}
       </tbody>
     </table>`;
+}
+
+// ── History hits map (for status updates on history cards) ───────────────────
+const historyHitsMap = {};   // hit.id → hit object
+
+// ── Board ─────────────────────────────────────────────────────────────────────
+const BOARD_COLS = [
+  { status:'new',       label:'New',         color:'bg-blue-50 text-blue-600 border-blue-100'    },
+  { status:'reviewing', label:'Reviewing',   color:'bg-amber-50 text-amber-600 border-amber-100'  },
+  { status:'replied',   label:'Replied',     color:'bg-violet-50 text-violet-600 border-violet-100'},
+  { status:'converted', label:'Converted',   color:'bg-emerald-50 text-emerald-600 border-emerald-100'},
+  { status:'skipped',   label:'Skipped',     color:'bg-slate-100 text-slate-400 border-slate-200' },
+];
+const boardOffsets = {};
+const BOARD_PAGE   = 30;
+
+function renderBoard() {
+  const wrap = document.querySelector('#board-feed > div');
+  wrap.innerHTML = BOARD_COLS.map(col => `
+    <div class="flex flex-col rounded-2xl border border-slate-200 bg-slate-50 flex-shrink-0" style="width:300px;height:100%">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold uppercase tracking-widest text-slate-500">${col.label}</span>
+          <span id="bcnt-${col.status}" class="text-xs bg-white border border-slate-200 text-slate-400 px-1.5 py-0.5 rounded-full font-medium">0</span>
+        </div>
+      </div>
+      <div id="bcol-${col.status}" class="flex-1 overflow-y-auto p-2 space-y-2">
+        <div class="text-slate-400 text-xs text-center py-6">Loading…</div>
+      </div>
+      <div class="p-2 flex-shrink-0">
+        <button id="bmore-${col.status}" onclick="loadBoardCol('${col.status}',true)"
+          class="hidden w-full text-xs py-2 bg-white hover:bg-slate-100 text-slate-500 rounded-xl border border-slate-200 transition-colors">
+          Load more
+        </button>
+      </div>
+    </div>`).join('');
+}
+
+async function loadBoard() {
+  renderBoard();
+  BOARD_COLS.forEach(c => { boardOffsets[c.status] = 0; loadBoardCol(c.status); });
+}
+
+async function loadBoardCol(status, more = false) {
+  if (!more) boardOffsets[status] = 0;
+  const data = await apiFetch(`/api/hits?status=${status}&limit=${BOARD_PAGE}&offset=${boardOffsets[status]}`)
+    .catch(() => ({ hits:[], total:0 }));
+  const col   = document.getElementById(`bcol-${status}`);
+  const cnt   = document.getElementById(`bcnt-${status}`);
+  const more_btn = document.getElementById(`bmore-${status}`);
+  if (!col) return;
+  if (!more) col.innerHTML = '';
+  cnt.textContent = data.total || 0;
+  if (!data.hits?.length && !more) {
+    col.innerHTML = '<div class="text-slate-400 text-xs text-center py-6">Empty</div>';
+    more_btn?.classList.add('hidden');
+    return;
+  }
+  for (const hit of (data.hits || [])) {
+    historyHitsMap[hit.id] = hit;
+    const el = document.createElement('div');
+    el.setAttribute('data-board-hid', hit.id);
+    el.innerHTML = boardCardHTML(hit);
+    col.appendChild(el);
+  }
+  boardOffsets[status] += (data.hits||[]).length;
+  more_btn?.classList.toggle('hidden', boardOffsets[status] >= (data.total||0));
+}
+
+function boardCardHTML(hit) {
+  const isPost  = hit.kind === 'post';
+  const age     = timeAgo((hit.ts||0)*1000);
+  const s       = hit.status || 'new';
+  const sc      = STATUS_CFG[s] || STATUS_CFG.new;
+  const typeDot = isPost
+    ? '<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-500 border border-blue-100">POST</span>'
+    : '<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-50 text-violet-500 border border-violet-100">CMT</span>';
+  const uid = hit.id + '-b';
+  const statusBtn = `<div class="relative inline-block">
+    <button onclick="toggleStatusMenu('${uid}','${hit.id}','${hit.listener_id||''}')"
+      class="text-[10px] px-1.5 py-0.5 rounded font-medium cursor-pointer ${sc.cls}">${sc.label}</button>
+    <div id="stm-${uid}" class="st-menu hidden">
+      ${Object.entries(STATUS_CFG).map(([k,v])=>
+        `<button onclick="setHitStatus('${hit.id}','${hit.listener_id||''}','${k}','${uid}')"
+          class="${k===s?'font-semibold text-slate-900':'text-slate-600'}">${v.label}</button>`).join('')}
+    </div>
+  </div>`;
+  return `<div class="bg-white rounded-xl border border-slate-200 p-3 space-y-2 hover:border-slate-300 transition-all" style="box-shadow:0 1px 3px rgba(15,23,42,.04)">
+    <div class="flex items-center gap-1.5 flex-wrap">
+      ${typeDot}
+      <span class="text-xs font-semibold text-orange-500">r/${esc(hit.subreddit||'')}</span>
+      <span class="ml-auto text-[10px] text-slate-300">${age}</span>
+    </div>
+    ${hit.title ? `<div class="text-xs font-semibold text-slate-800 leading-snug line-clamp-2">${esc(hit.title)}</div>` : `<div class="text-xs text-slate-500 leading-relaxed line-clamp-2">${esc(hit.excerpt||'')}</div>`}
+    <div class="flex items-center justify-between gap-2">
+      <span class="text-[10px] font-mono bg-amber-50 text-amber-600 border border-amber-100 px-1.5 py-0.5 rounded truncate max-w-[100px]">${esc(hit.match||'')}</span>
+      ${statusBtn}
+      <a href="${esc(hit.url||'')}" target="_blank" rel="noopener"
+        class="text-[10px] px-2 py-1 rounded-lg bg-slate-900 text-white hover:bg-slate-700 font-medium transition-colors flex-shrink-0">↗</a>
+    </div>
+  </div>`;
 }
 
 // ── Logs ─────────────────────────────────────────────────────────────────────

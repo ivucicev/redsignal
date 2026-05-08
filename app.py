@@ -918,12 +918,13 @@ def api_stop_all() -> dict:
 # ── Hits API ──────────────────────────────────────────────────────────────────
 @app.get("/api/hits")
 def api_get_hits(listener_id: str = "", kind: str = "", subreddit: str = "",
-                 q: str = "", limit: int = 50, offset: int = 0) -> dict:
+                 q: str = "", status: str = "", limit: int = 50, offset: int = 0) -> dict:
     conds: list[str] = []
     params: list     = []
     if listener_id: conds.append("listener_id=?");           params.append(listener_id)
     if kind:        conds.append("kind=?");                  params.append(kind)
     if subreddit:   conds.append("subreddit LIKE ?");        params.append(f"%{subreddit}%")
+    if status:      conds.append("status=?");                params.append(status)
     if q:
         conds.append("(title LIKE ? OR excerpt LIKE ? OR match_text LIKE ? OR author LIKE ?)")
         params.extend([f"%{q}%"] * 4)
