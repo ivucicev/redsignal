@@ -1,0 +1,11 @@
+services:
+  redsignal:
+    build: .
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      # All persistent data (DB + logs) lives here on the host
+      - ./data:/app/data
+    restart: unless-stopped
+    env_file:
+      - .env

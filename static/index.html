@@ -1,0 +1,2197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RedSignal</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  @keyframes cardIn   { from{opacity:0;transform:translateY(-14px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes badgeFlash{ 0%,100%{background:#e2e8f0;color:#475569} 40%{background:#dbeafe;color:#1d4ed8} }
+  @keyframes toastIn  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+  @keyframes toastOut { from{opacity:1;transform:none} to{opacity:0;transform:translateY(8px)} }
+  @keyframes spin     { to{transform:rotate(360deg)} }
+  @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .card-new   { animation:cardIn .35s cubic-bezier(0.16,1,0.3,1) both }
+  .badge-flash{ animation:badgeFlash .6s ease-out }
+  .spin       { animation:spin 1s linear infinite;display:inline-block }
+  .pulse-dot  { animation:pulse 2s ease-in-out infinite }
+  .toast      { animation:toastIn .2s ease-out both }
+  .toast-out  { animation:toastOut .2s ease-in both }
+  .tab { padding:.4rem .9rem;border-radius:.6rem;font-size:.875rem;font-weight:500;color:#64748b;cursor:pointer;transition:all .15s;white-space:nowrap }
+  .tab:hover { color:#0f172a }
+  .tab.active { background:#0f172a;color:#fff }
+  .pill { padding:.3rem .85rem;border-radius:9999px;font-size:.75rem;font-weight:500;cursor:pointer;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;transition:all .15s;white-space:nowrap }
+  .pill:hover { border-color:#94a3b8;color:#0f172a }
+  .pill.active { background:#0f172a;border-color:#0f172a;color:#fff }
+  .inp { display:block;width:100%;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:.6rem;padding:.55rem .85rem;font-size:.875rem;color:#0f172a;outline:none;transition:border-color .15s,background .15s }
+  .inp:focus { border-color:#3b82f6;background:#fff }
+  .inp::placeholder { color:#94a3b8 }
+  select.inp { cursor:pointer }
+  textarea.inp { resize:vertical }
+  .card { background:#fff;border:1px solid #f1f5f9;border-radius:1rem;box-shadow:0 1px 4px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.03) }
+  /* Status badges */
+  .st-new       { background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe }
+  .st-reviewing { background:#fffbeb;color:#d97706;border:1px solid #fde68a }
+  .st-replied   { background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe }
+  .st-converted { background:#ecfdf5;color:#059669;border:1px solid #a7f3d0 }
+  .st-skipped   { background:#f8fafc;color:#94a3b8;border:1px solid #e2e8f0 }
+  /* Status dropdown */
+  .st-menu { position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid #e2e8f0;border-radius:.75rem;box-shadow:0 8px 24px rgba(15,23,42,.12);z-index:20;min-width:130px;padding:.25rem;overflow:hidden }
+  .st-menu button { display:block;width:100%;text-align:left;padding:.4rem .7rem;border-radius:.5rem;font-size:.75rem;font-weight:500;cursor:pointer;transition:background .1s }
+  .st-menu button:hover { background:#f8fafc }
+  /* Panel backdrop */
+  .panel-backdrop { position:fixed;inset:0;background:rgba(15,23,42,.2);backdrop-filter:blur(2px);z-index:40 }
+  /* Side panels */
+  .side-panel { position:fixed;top:0;right:0;height:100%;width:100%;max-width:520px;background:#fff;z-index:50;display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(15,23,42,.12) }
+  .view-btn { padding:.35rem .85rem;border-radius:.5rem;font-size:.8125rem;font-weight:500;cursor:pointer;transition:all .15s;color:#64748b }
+  .view-btn.active { background:#fff;color:#0f172a;box-shadow:0 1px 3px rgba(15,23,42,.1) }
+  ::-webkit-scrollbar { width:5px } ::-webkit-scrollbar-track { background:transparent } ::-webkit-scrollbar-thumb { background:#cbd5e1;border-radius:9999px }
+  * { box-sizing:border-box }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif }
+
+  /* ── Dark mode ── */
+  html.dark body               { background:#0f172a!important;color:#e2e8f0!important }
+  html.dark header             { background:#1e293b!important;border-color:#334155!important }
+  html.dark .card              { background:#1e293b!important;border-color:#2d3f55!important;box-shadow:none!important }
+  html.dark .side-panel        { background:#1e293b!important }
+  html.dark .st-menu           { background:#1e293b!important;border-color:#334155!important }
+  html.dark .inp               { background:#0f172a!important;border-color:#334155!important;color:#e2e8f0!important }
+  html.dark select.inp         { background:#0f172a!important;color:#e2e8f0!important }
+  html.dark .inp::placeholder  { color:#475569!important }
+  html.dark .tab               { color:#64748b!important }
+  html.dark .tab.active        { background:#e2e8f0!important;color:#0f172a!important }
+  html.dark .pill              { background:#1e293b!important;border-color:#334155!important;color:#64748b!important }
+  html.dark .pill.active       { background:#e2e8f0!important;border-color:#e2e8f0!important;color:#0f172a!important }
+  html.dark .view-btn          { color:#64748b!important }
+  html.dark .view-btn.active   { background:#334155!important;color:#e2e8f0!important;box-shadow:none!important }
+  html.dark .bg-white          { background:#1e293b!important }
+  html.dark .bg-slate-50       { background:#0f172a!important }
+  html.dark .bg-slate-100      { background:#1e293b!important }
+  html.dark .bg-slate-200      { background:#334155!important }
+  html.dark .bg-slate-900      { background:#f1f5f9!important }
+  html.dark .bg-slate-800      { background:#e2e8f0!important }
+  html.dark .hover\:bg-slate-50:hover  { background:#334155!important }
+  html.dark .hover\:bg-slate-100:hover { background:#334155!important }
+  html.dark .hover\:bg-slate-200:hover { background:#475569!important }
+  html.dark .hover\:bg-slate-700:hover { background:#334155!important }
+  html.dark .hover\:bg-slate-800:hover { background:#e2e8f0!important }
+  html.dark .text-slate-900    { color:#f1f5f9!important }
+  html.dark .text-slate-800    { color:#e2e8f0!important }
+  html.dark .text-slate-700    { color:#cbd5e1!important }
+  html.dark .text-slate-600    { color:#94a3b8!important }
+  html.dark .text-slate-500    { color:#64748b!important }
+  html.dark .text-slate-400    { color:#475569!important }
+  html.dark .text-white        { color:#0f172a!important }
+  html.dark .border-slate-100  { border-color:#1e293b!important }
+  html.dark .border-slate-200  { border-color:#334155!important }
+  html.dark .border-t          { border-color:#334155!important }
+  html.dark .border-b          { border-color:#334155!important }
+  html.dark .divide-slate-50>*+* { border-color:#334155!important }
+  html.dark #p-analytics       { background:#0f172a!important }
+  /* dark nav start/stop buttons */
+  html.dark #p-stream .bg-slate-900 { background:#f1f5f9!important;color:#0f172a!important }
+  html.dark #p-stream .text-white   { color:#0f172a!important }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-900 flex flex-col h-screen overflow-hidden">
+
+<!-- ── Nav ── -->
+<header class="bg-white border-b border-slate-100 px-5 py-3 flex items-center gap-5 flex-shrink-0" style="box-shadow:0 1px 3px rgba(15,23,42,.06)">
+  <div class="flex items-center gap-2.5 select-none flex-shrink-0">
+    <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white" style="background:linear-gradient(135deg,#ef4444,#f97316)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 12h3m14 0h3M12 2v3m0 14v3M4.93 4.93l2.12 2.12m9.9 9.9 2.12 2.12M4.93 19.07l2.12-2.12m9.9-9.9 2.12-2.12"/></svg>
+    </div>
+    <span class="font-bold text-slate-900 text-[15px]">RedSignal</span>
+  </div>
+  <nav class="flex gap-0.5 bg-slate-100 rounded-xl p-1 flex-shrink-0">
+    <button onclick="showTab('stream')"    id="t-stream"    class="tab active">Stream</button>
+    <button onclick="showTab('analytics')" id="t-analytics" class="tab">Analytics</button>
+    <button onclick="showTab('vault')"     id="t-vault"     class="tab">Vault</button>
+    <button onclick="showTab('listeners')" id="t-listeners" class="tab">Listeners</button>
+    <button onclick="showTab('logs')"      id="t-logs"      class="tab">Logs</button>
+  </nav>
+  <div class="ml-auto flex items-center gap-2 flex-shrink-0">
+    <span id="ws-dot" class="text-xs text-slate-400 mr-1">● offline</span>
+    <div id="hit-count" class="text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full font-medium">0 hits</div>
+    <!-- Notification bell -->
+    <button id="notif-btn" onclick="toggleBrowserNotif()" title="Browser notifications"
+      class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+      <svg id="notif-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      </svg>
+    </button>
+    <!-- Health toggle -->
+    <button onclick="toggleHealth()" title="Stream health"
+      class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    </button>
+    <!-- Dark mode toggle -->
+    <button onclick="toggleDark()" title="Toggle dark mode"
+      class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+      <svg id="icon-sun"  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <svg id="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+    <button onclick="startAll()" class="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-colors">
+      <svg width="9" height="11" viewBox="0 0 9 11" fill="currentColor"><path d="M0 0l9 5.5L0 11V0z"/></svg> Start All
+    </button>
+    <button onclick="stopAll()" class="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-medium border border-slate-200 transition-colors">
+      <svg width="9" height="9" viewBox="0 0 9 9" fill="currentColor"><rect width="9" height="9" rx="1.5"/></svg> Stop All
+    </button>
+  </div>
+</header>
+
+<main class="flex-1 overflow-hidden">
+
+<!-- ── Stream ── -->
+<div id="p-stream" class="h-full flex flex-col">
+
+  <!-- Toolbar row 1: listener pills + view toggle + controls -->
+  <div class="bg-white border-b border-slate-100 px-5 py-2.5 flex items-center gap-3 flex-wrap flex-shrink-0">
+    <div id="stream-pills" class="flex gap-2 flex-wrap items-center"></div>
+    <!-- kind filter -->
+    <div class="flex items-center bg-slate-100 rounded-lg p-0.5 flex-shrink-0">
+      <button onclick="setKindFilter(null)"      id="kf-all"     class="view-btn active text-xs px-2.5 py-1">All</button>
+      <button onclick="setKindFilter('post')"    id="kf-post"    class="view-btn text-xs px-2.5 py-1">Posts</button>
+      <button onclick="setKindFilter('comment')" id="kf-comment" class="view-btn text-xs px-2.5 py-1">Comments</button>
+    </div>
+    <!-- status filter -->
+    <select onchange="setStatusFilter(this.value)" class="text-xs border border-slate-200 bg-white rounded-lg px-2 py-1.5 text-slate-600 outline-none cursor-pointer flex-shrink-0">
+      <option value="">Any status</option>
+      <option value="new">New</option>
+      <option value="reviewing">Reviewing</option>
+      <option value="replied">Replied</option>
+      <option value="converted">Converted</option>
+      <option value="skipped">Skipped</option>
+    </select>
+    <div class="ml-auto flex items-center gap-4 flex-shrink-0">
+      <!-- Live / History toggle -->
+      <div class="flex items-center bg-slate-100 rounded-xl p-0.5">
+        <button onclick="setViewMode('live')"    id="btn-live"    class="view-btn active">● Live</button>
+        <button onclick="setViewMode('history')" id="btn-history" class="view-btn">History</button>
+      </div>
+      <!-- Live controls -->
+      <div id="live-controls" class="flex items-center gap-4">
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+          <div class="relative"><input type="checkbox" id="auto-filter" onchange="autoFilter=this.checked" class="sr-only peer">
+            <div class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:bg-violet-500 transition-colors"></div>
+            <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></div></div>
+          <span class="text-sm text-slate-600 font-medium">Auto AI</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+          <div class="relative"><input type="checkbox" id="hide-rejected" onchange="toggleHideRejected(this.checked)" class="sr-only peer">
+            <div class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:bg-red-400 transition-colors"></div>
+            <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></div></div>
+          <span class="text-sm text-slate-600 font-medium">Hide rejected</span>
+        </label>
+        <button onclick="clearHits()" class="text-sm text-slate-400 hover:text-slate-700 transition-colors">Clear</button>
+        <button onclick="exportCSV()" class="text-sm text-slate-400 hover:text-slate-700 transition-colors">↓ CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Health strip -->
+  <div id="health-strip" class="hidden bg-slate-50 border-b border-slate-100 px-5 py-2 flex items-center gap-5 text-xs overflow-x-auto flex-shrink-0"></div>
+
+  <!-- Toolbar row 2: History filters (hidden in live mode) -->
+  <div id="history-toolbar" class="hidden bg-slate-50 border-b border-slate-100 px-5 py-3 flex items-center gap-2.5 flex-shrink-0 flex-wrap">
+    <select id="h-listener" class="inp text-sm" style="width:auto;min-width:160px" onchange="hFilters.listener_id=this.value">
+      <option value="">All listeners</option>
+    </select>
+    <select id="h-kind" class="inp text-sm" style="width:auto" onchange="hFilters.kind=this.value">
+      <option value="">Posts & Comments</option>
+      <option value="post">Posts only</option>
+      <option value="comment">Comments only</option>
+    </select>
+    <select id="h-filter" class="inp text-sm" style="width:auto" onchange="hFilters.filter_passed=this.value">
+      <option value="">Any result</option>
+      <option value="passed">Passed filter</option>
+      <option value="rejected">Rejected</option>
+    </select>
+    <input id="h-q" class="inp text-sm flex-1" style="min-width:180px" placeholder="Search title, excerpt, author, subreddit…"
+           onkeydown="if(event.key==='Enter')loadHistory(true)">
+    <button onclick="loadHistory(true)" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-colors flex-shrink-0">Search</button>
+    <button onclick="exportHistory()" class="px-3 py-2 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-sm font-medium border border-slate-200 transition-colors flex-shrink-0">↓ CSV</button>
+  </div>
+
+  <!-- Live feed -->
+  <div id="feed" class="flex-1 overflow-y-auto p-5 space-y-3">
+    <div id="empty" class="flex flex-col items-center justify-center py-24 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M2 12h3m14 0h3M12 2v3m0 14v3M4.93 4.93l2.12 2.12m9.9 9.9 2.12 2.12M4.93 19.07l2.12-2.12m9.9-9.9 2.12-2.12"/></svg>
+      </div>
+      <div class="text-slate-700 font-semibold text-lg">No hits yet</div>
+      <div class="text-slate-400 text-sm mt-1">Add credentials in Vault, create a listener, then click Start All</div>
+    </div>
+    <!-- "Load older" anchor — DB-loaded cards insert before this -->
+    <div id="live-load-more-wrap" class="hidden flex justify-center pt-1 pb-4">
+      <button onclick="loadRecentHits(true)"
+        class="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-500 rounded-xl text-sm font-medium border border-slate-200 transition-colors flex items-center gap-2">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        Load older
+      </button>
+    </div>
+  </div>
+
+  <!-- History feed -->
+  <div id="history-feed" class="hidden flex-1 overflow-y-auto p-5">
+    <!-- Stats bar -->
+    <div id="h-stats" class="grid grid-cols-3 gap-3 mb-5"></div>
+    <!-- Results info -->
+    <div id="h-info" class="text-xs text-slate-400 mb-3"></div>
+    <!-- Cards -->
+    <div id="history-cards" class="space-y-3"></div>
+    <!-- Load more -->
+    <div class="flex justify-center mt-5">
+      <button id="h-load-more" onclick="loadHistory(false)" class="hidden px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-sm font-medium border border-slate-200 transition-colors">Load more</button>
+    </div>
+    <!-- Empty -->
+    <div id="h-empty" class="hidden flex flex-col items-center justify-center py-16 text-center">
+      <div class="text-slate-400 text-sm">No hits match your filters.</div>
+    </div>
+  </div>
+
+</div><!-- end p-stream -->
+
+<!-- ── Vault ── -->
+<div id="p-vault" class="hidden h-full overflow-y-auto p-6">
+  <div class="max-w-5xl mx-auto space-y-8">
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <div><h2 class="text-lg font-semibold">Reddit Accounts</h2><p class="text-sm text-slate-400 mt-0.5">One credential per Reddit app.</p></div>
+        <button onclick="addCred('reddit')" class="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-medium transition-colors">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Add Account
+        </button>
+      </div>
+      <div id="vault-reddit" class="space-y-3"><div class="text-slate-400 text-sm py-6 text-center">No Reddit accounts yet.</div></div>
+    </section>
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <div><h2 class="text-lg font-semibold">AI Keys</h2><p class="text-sm text-slate-400 mt-0.5">Anthropic Claude, OpenAI, or local Ollama for filter pipelines.</p></div>
+        <div class="flex items-center gap-2">
+          <button onclick="addCred('anthropic')" class="flex items-center gap-1.5 px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-medium transition-colors">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Anthropic
+          </button>
+          <button onclick="addCred('openai')" class="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium transition-colors">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> OpenAI
+          </button>
+          <button onclick="addCred('ollama')" class="flex items-center gap-1.5 px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-xl text-sm font-medium transition-colors">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Ollama
+          </button>
+        </div>
+      </div>
+      <div id="vault-ai" class="space-y-3"><div class="text-slate-400 text-sm py-6 text-center">No AI keys yet.</div></div>
+    </section>
+  </div>
+</div>
+
+<!-- ── Listeners ── -->
+<div id="p-listeners" class="hidden h-full overflow-y-auto p-6">
+  <div class="max-w-5xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+      <div><h2 class="text-lg font-semibold">Listeners</h2><p class="text-sm text-slate-400 mt-0.5">Each listener runs its own Reddit stream.</p></div>
+      <button onclick="addListener()" class="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-colors">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> New Listener
+      </button>
+    </div>
+    <div id="listener-list" class="space-y-3"></div>
+    <div id="listener-empty" class="flex flex-col items-center justify-center py-24 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83m9.9 9.9 2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9 2.83-2.83"/></svg>
+      </div>
+      <div class="text-slate-700 font-semibold text-lg">No listeners yet</div>
+      <div class="text-slate-400 text-sm mt-1">Click "New Listener" to get started</div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- ── Analytics ── -->
+<div id="p-analytics" class="hidden h-full overflow-y-auto p-8">
+  <div class="max-w-5xl mx-auto space-y-8">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-semibold">Analytics</h2>
+        <p class="text-sm text-slate-400 mt-0.5">Insights from your saved hit history.</p>
+      </div>
+      <div class="flex items-center bg-slate-100 rounded-xl p-1 gap-0.5">
+        <button onclick="loadStats(7)"   id="st-7"   class="view-btn active text-xs px-3 py-1.5">7d</button>
+        <button onclick="loadStats(30)"  id="st-30"  class="view-btn text-xs px-3 py-1.5">30d</button>
+        <button onclick="loadStats(90)"  id="st-90"  class="view-btn text-xs px-3 py-1.5">90d</button>
+        <button onclick="loadStats(0)"   id="st-0"   class="view-btn text-xs px-3 py-1.5">All</button>
+      </div>
+    </div>
+
+    <!-- KPI row -->
+    <div id="st-kpis" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4"></div>
+
+    <!-- Timeline (full width) -->
+    <div class="card p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <div class="font-semibold text-slate-800">Hits over time</div>
+          <div class="text-xs text-slate-400 mt-0.5">Daily volume breakdown</div>
+        </div>
+        <div class="flex items-center gap-3 text-xs text-slate-500">
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>Total</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-violet-400 inline-block"></span>Posts</span>
+          <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>Passed AI</span>
+        </div>
+      </div>
+      <div style="height:220px;position:relative"><canvas id="ch-timeline"></canvas></div>
+    </div>
+
+    <!-- Row: donut + subreddits -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="card p-6">
+        <div class="font-semibold text-slate-800 mb-1">Type split</div>
+        <div class="text-xs text-slate-400 mb-4">Posts vs Comments</div>
+        <div style="height:160px;position:relative"><canvas id="ch-type"></canvas></div>
+        <div id="st-type-labels" class="flex justify-center gap-4 mt-3 text-xs text-slate-500"></div>
+      </div>
+      <div class="lg:col-span-2 card p-6">
+        <div class="font-semibold text-slate-800 mb-1">Top subreddits</div>
+        <div class="text-xs text-slate-400 mb-4">By hit volume</div>
+        <div style="height:220px;position:relative"><canvas id="ch-subs"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Row: keywords + by hour -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card p-6">
+        <div class="font-semibold text-slate-800 mb-1">Top keywords matched</div>
+        <div class="text-xs text-slate-400 mb-4">Which patterns triggered most hits</div>
+        <div style="height:240px;position:relative"><canvas id="ch-kw"></canvas></div>
+      </div>
+      <div class="card p-6">
+        <div class="font-semibold text-slate-800 mb-1">Hits by hour (UTC)</div>
+        <div class="text-xs text-slate-400 mb-4">Best times to engage</div>
+        <div style="height:240px;position:relative"><canvas id="ch-hour"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Row: by listener + by day of week -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card p-6">
+        <div class="font-semibold text-slate-800 mb-1">By listener</div>
+        <div class="text-xs text-slate-400 mb-4">Volume, passed, rejected per listener</div>
+        <div style="height:200px;position:relative"><canvas id="ch-listener"></canvas></div>
+      </div>
+      <div class="card p-6">
+        <div class="font-semibold text-slate-800 mb-1">By day of week</div>
+        <div class="text-xs text-slate-400 mb-4">Which days are most active</div>
+        <div style="height:200px;position:relative"><canvas id="ch-dow"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Row: subreddit pass rate + top authors -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card p-6">
+        <div class="font-semibold text-slate-800 mb-1">Subreddit quality <span class="text-xs text-slate-400 font-normal">(AI pass rate, ≥3 filtered)</span></div>
+        <div class="text-xs text-slate-400 mb-4">Best subreddits for relevant leads</div>
+        <div style="height:220px;position:relative"><canvas id="ch-sub-pass"></canvas></div>
+      </div>
+      <div class="card p-6 flex flex-col">
+        <div class="font-semibold text-slate-800 mb-1">Top authors</div>
+        <div class="text-xs text-slate-400 mb-3">Most active users mentioning your keywords</div>
+        <div id="st-authors" class="flex-1 overflow-auto">
+          <div class="text-slate-400 text-sm text-center py-6">No data yet</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly breakdown table -->
+    <div class="card p-6">
+      <div class="font-semibold text-slate-800 mb-4">Monthly breakdown</div>
+      <div id="st-monthly" class="overflow-x-auto">
+        <div class="text-slate-400 text-sm text-center py-6">No data yet</div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div id="st-empty" class="hidden flex flex-col items-center justify-center py-24 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      </div>
+      <div class="text-slate-700 font-semibold text-lg">No data yet</div>
+      <div class="text-slate-400 text-sm mt-1">Start a listener and wait for hits to appear here</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Logs ── -->
+<div id="p-logs" class="hidden h-full overflow-y-auto p-6" style="min-height:0;height:100vh">
+  <div class="max-w-5xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-semibold">Logs</h2>
+        <p class="text-sm text-slate-400 mt-0.5">System events and webhook delivery history.</p>
+      </div>
+      <div class="flex items-center bg-slate-100 rounded-xl p-1 gap-0.5">
+        <button onclick="switchLogTab('system')"  id="lt-system"  class="view-btn active text-xs px-3 py-1.5">System</button>
+        <button onclick="switchLogTab('webhook')" id="lt-webhook" class="view-btn text-xs px-3 py-1.5">Webhooks</button>
+      </div>
+    </div>
+
+    <!-- ── System logs ── -->
+    <div id="lp-system">
+      <div class="flex items-center gap-3 mb-4">
+        <select id="sl-level" class="inp text-sm" style="width:auto" onchange="loadSystemLogs()">
+          <option value="">All levels</option>
+          <option value="INFO">Info</option>
+          <option value="WARN">Warn</option>
+          <option value="ERROR">Error</option>
+        </select>
+        <button onclick="loadSystemLogs()" class="text-xs px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">↻ Refresh</button>
+      </div>
+      <div id="sl-table" class="card overflow-hidden">
+        <div class="text-slate-400 text-sm text-center py-10">Select the Logs tab to load.</div>
+      </div>
+      <div class="flex justify-center mt-4">
+        <button id="sl-more" onclick="loadSystemLogs(true)" class="hidden px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-sm font-medium border border-slate-200 transition-colors">Load more</button>
+      </div>
+    </div>
+
+    <!-- ── Webhook logs ── -->
+    <div id="lp-webhook" class="hidden">
+      <div class="flex items-center gap-3 mb-4">
+        <select id="wl-status" class="inp text-sm" style="width:auto" onchange="loadWebhookLogs()">
+          <option value="">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="ok">OK</option>
+          <option value="failed">Failed</option>
+        </select>
+        <button onclick="loadWebhookLogs()" class="text-xs px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">↻ Refresh</button>
+      </div>
+      <div id="wl-table" class="card overflow-hidden">
+        <div class="text-slate-400 text-sm text-center py-10">Select the Logs tab to load.</div>
+      </div>
+      <div class="flex justify-center mt-4">
+        <button id="wl-more" onclick="loadWebhookLogs(true)" class="hidden px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 rounded-xl text-sm font-medium border border-slate-200 transition-colors">Load more</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Listener Edit Drawer ── -->
+<div id="modal-backdrop" class="hidden fixed inset-0 z-40" style="background:rgba(15,23,42,.2);backdrop-filter:blur(2px)" onclick="closeModal()"></div>
+<div id="modal" class="hidden fixed top-0 right-0 h-full w-full max-w-xl bg-white z-50 flex flex-col" style="box-shadow:-8px 0 40px rgba(15,23,42,.12)">
+  <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+    <h2 class="font-semibold text-slate-900" id="modal-title">Edit Listener</h2>
+    <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors text-xl leading-none">×</button>
+  </div>
+  <div id="modal-body" class="flex-1 overflow-y-auto p-6 space-y-7"></div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let cfg            = {};
+let hits           = [];
+let hitIds         = new Set();
+let streamFilter   = null;
+let autoFilter     = false;
+let hideRejected   = false;
+let listenerStatus = {};
+let editingLid     = null;
+let editingCred    = null;
+let saveTimer      = null;
+
+// History state
+let kindFilter   = null;   // null | 'post' | 'comment'
+let viewMode     = 'live';
+
+// ── Status filter ─────────────────────────────────────────────────────────────
+let statusFilter = null;
+function setStatusFilter(val) { statusFilter = val || null; _reapplyVisibility(); }
+
+// Close any open status menus when clicking elsewhere
+document.addEventListener('click', e => {
+  if (!e.target.closest('[id^="stm-"]') && !e.target.closest('button[onclick*="toggleStatusMenu"]')) {
+    document.querySelectorAll('[id^="stm-"]').forEach(m => m.classList.add('hidden'));
+  }
+});
+
+function toggleStatusMenu(uid, hitId, listenerId) {
+  const menu = document.getElementById(`stm-${uid}`);
+  if (!menu) return;
+  document.querySelectorAll('[id^="stm-"]').forEach(m => { if (m.id !== `stm-${uid}`) m.classList.add('hidden'); });
+  menu.classList.toggle('hidden');
+}
+
+async function setHitStatus(hitId, listenerId, status, uid) {
+  // Update in-memory
+  const hit = hits.find(h => h.id === hitId);
+  if (hit) hit.status = status;
+  // Close menu and re-render badge
+  document.getElementById(`stm-${uid}`)?.classList.add('hidden');
+  updateCard(hitId, uid.endsWith('-h'));
+  // Persist
+  await apiFetch(`/api/hits/${hitId}/status`, {
+    method: 'PATCH', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ status, listener_id: listenerId || null }),
+  });
+}
+
+// ── Reply panel ────────────────────────────────────────────────────────────────
+let _replyHit    = null;
+let _replyTone   = 'helpful';
+let _productSave = null;
+
+function openReplyPanel(hitId, isHistory) {
+  const hit = hits.find(h => h.id === hitId);
+  if (!hit) return;
+  _replyHit = hit;
+
+  document.getElementById('rp-sub').textContent     = `r/${hit.subreddit}`;
+  document.getElementById('rp-title').textContent   = hit.title || '';
+  document.getElementById('rp-excerpt').textContent = hit.excerpt || '';
+  document.getElementById('rp-product').value       = cfg.product_context || '';
+  document.getElementById('rp-open-link').href      = hit.url || '#';
+  document.getElementById('rp-result').classList.add('hidden');
+  if (hit.reply_draft) {
+    document.getElementById('rp-reply-text').value = hit.reply_draft;
+    document.getElementById('rp-result').classList.remove('hidden');
+  }
+  setTone('helpful');
+  document.getElementById('reply-backdrop').classList.remove('hidden');
+  document.getElementById('reply-panel').classList.remove('hidden');
+}
+
+function closeReplyPanel() {
+  document.getElementById('reply-backdrop').classList.add('hidden');
+  document.getElementById('reply-panel').classList.add('hidden');
+  _replyHit = null;
+}
+
+function setTone(tone) {
+  _replyTone = tone;
+  document.querySelectorAll('.tone-btn').forEach(b => {
+    const active = b.getAttribute('onclick')?.includes(`'${tone}'`);
+    b.className = `tone-btn text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${active ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`;
+  });
+}
+
+function debounceSaveProduct(val) {
+  cfg.product_context = val;
+  clearTimeout(_productSave);
+  _productSave = setTimeout(() => apiFetch('/api/settings/product_context', {
+    method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ value: val }),
+  }), 800);
+}
+
+async function generateReply() {
+  if (!_replyHit) return;
+  const lst     = (cfg.listeners||[]).find(l => l.id === _replyHit.listener_id);
+  const credId  = lst?.ai_credential_id || null;
+  const btn     = document.getElementById('rp-generate-btn');
+  btn.textContent = '⟳ Generating…';
+  btn.disabled    = true;
+
+  const result = await apiFetch('/api/reply/draft', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      title:           _replyHit.title || '',
+      excerpt:         _replyHit.excerpt || '',
+      subreddit:       _replyHit.subreddit || '',
+      product_context: cfg.product_context || '',
+      tone:            _replyTone,
+      credential_id:   credId,
+    }),
+  });
+
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m13 2-2 2.5h3L12 15"/><path d="M9.42 7.89 3.5 14h4l-2 8 9.08-10.11H11l2-8z"/></svg> Generate Reply';
+  btn.disabled = false;
+
+  if (result.error) { showToast(result.error, 'red'); return; }
+  document.getElementById('rp-reply-text').value = result.reply;
+  document.getElementById('rp-result').classList.remove('hidden');
+}
+
+async function copyReply() {
+  const text = document.getElementById('rp-reply-text').value;
+  await navigator.clipboard.writeText(text).catch(() => {});
+  showToast('Copied to clipboard', 'green');
+  await saveReplyDraft();
+}
+
+async function saveReplyDraft() {
+  if (!_replyHit) return;
+  const reply = document.getElementById('rp-reply-text').value;
+  await apiFetch(`/api/hits/${_replyHit.id}/reply`, {
+    method: 'PATCH', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ reply, listener_id: _replyHit.listener_id }),
+  });
+  // Update in-memory
+  const hit = hits.find(h => h.id === _replyHit.id);
+  if (hit) { hit.reply_draft = reply; hit.status = 'replied'; }
+  updateCard(_replyHit.id, false);
+  showToast('Draft saved · status → Replied', 'blue');
+}
+
+// ── Thread panel ───────────────────────────────────────────────────────────────
+async function openThreadPanel(postId, listenerId, commentId) {
+  document.getElementById('thread-backdrop').classList.remove('hidden');
+  document.getElementById('thread-panel').classList.remove('hidden');
+  document.getElementById('thread-meta').textContent = '';
+  document.getElementById('thread-body').innerHTML = `
+    <div class="text-center text-slate-400 py-12">
+      <div class="text-2xl mb-2"><span class="spin inline-block">⟳</span></div>
+      <div class="text-sm">Loading thread…</div>
+    </div>`;
+
+  const data = await apiFetch(`/api/reddit/thread?post_id=${encodeURIComponent(postId)}&listener_id=${encodeURIComponent(listenerId)}`);
+
+  if (data.error) {
+    document.getElementById('thread-body').innerHTML = `<div class="text-red-400 text-sm p-4">${esc(data.error)}</div>`;
+    return;
+  }
+
+  document.getElementById('thread-meta').textContent =
+    `r/${data.subreddit} · ${data.score} pts · ${data.num_comments} comments`;
+
+  document.getElementById('thread-body').innerHTML = `
+    <!-- Post -->
+    <div class="space-y-3">
+      <div class="text-base font-semibold text-slate-900 leading-snug">${esc(data.title)}</div>
+      <div class="flex items-center gap-2 text-xs text-slate-400">
+        <span>u/${esc(data.author)}</span>
+        <span>·</span>
+        <span>▲ ${data.score}</span>
+      </div>
+      ${data.selftext ? `<div class="text-sm text-slate-600 leading-relaxed bg-slate-50 rounded-xl p-4 whitespace-pre-wrap">${esc(data.selftext)}</div>` : ''}
+      <a href="${esc(data.url)}" target="_blank" rel="noopener"
+        class="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:underline">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg>
+        Open on Reddit
+      </a>
+    </div>
+    ${data.comments.length ? `
+    <!-- Comments -->
+    <div class="border-t border-slate-100 pt-4 space-y-3">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Top comments</div>
+      ${data.comments.map(c => {
+        const isMatch = c.id === commentId;
+        return `<div class="rounded-xl p-3 text-sm ${isMatch ? 'bg-blue-50 border border-blue-100' : 'bg-slate-50'}">
+          <div class="flex items-center gap-2 mb-1.5 text-xs text-slate-400">
+            <span class="font-medium text-slate-600">u/${esc(c.author)}</span>
+            <span>▲ ${c.score}</span>
+            ${isMatch ? '<span class="text-blue-600 font-semibold">← matched</span>' : ''}
+          </div>
+          <div class="text-slate-700 leading-relaxed whitespace-pre-wrap">${esc(c.body)}</div>
+        </div>`;
+      }).join('')}
+    </div>` : ''}`;
+}
+
+function closeThreadPanel() {
+  document.getElementById('thread-backdrop').classList.add('hidden');
+  document.getElementById('thread-panel').classList.add('hidden');
+}
+
+// Debounced hit toast
+let _hitBatch = [], _hitTimer = null;
+function _notifyHit(hit) {
+  _hitBatch.push(hit);
+  clearTimeout(_hitTimer);
+  _hitTimer = setTimeout(() => {
+    const n = _hitBatch.length, h = _hitBatch[0];
+    showToast(n === 1 ? `r/${h.subreddit} · ${h.match}` : `${n} new hits`, 'blue');
+    _hitBatch = [];
+  }, 800);
+}
+let hFilters     = { listener_id:'', kind:'', q:'' };
+let hOffset      = 0;
+let hTotal       = 0;
+const H_LIMIT    = 50;
+
+// ── Live feed DB pre-load state ───────────────────────────────────────────────
+let liveDbOffset = 0;
+let liveDbTotal  = 0;
+const LIVE_PAGE  = 25;
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+(async () => {
+  cfg = await apiFetch('/api/config');
+  if (!cfg.product_context) {
+    const s = await apiFetch('/api/settings/product_context').catch(()=>({value:''}));
+    cfg.product_context = s.value || '';
+  }
+  renderVault();
+  renderListenerList();
+  renderStreamPills();
+  populateHistoryListenerFilter();
+  connectWS();
+  pollStatus();
+  setInterval(pollStatus, 3000);
+  // Pre-load recent hits so the feed isn't blank on refresh
+  loadRecentHits();
+})();
+
+// ── Live feed: load from DB (pagination) ─────────────────────────────────────
+async function loadRecentHits(more = false) {
+  if (!more) liveDbOffset = 0;
+
+  // Show loading state on button
+  const wrap = document.getElementById('live-load-more-wrap');
+  const btn  = wrap?.querySelector('button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+
+  const data = await apiFetch(`/api/hits?limit=${LIVE_PAGE}&offset=${liveDbOffset}`)
+    .catch(() => ({ hits:[], total:0 }));
+
+  const returned = data.hits || [];
+  // DB total is authoritative — update immediately so counter is always correct
+  liveDbTotal = data.total || liveDbTotal;
+  _updateHitCounter(false);
+
+  for (const hit of returned) {
+    if (hitIds.has(hit.id)) continue;   // skip hits already shown via WS
+    hitIds.add(hit.id);
+    hits.push(hit);                      // older hits append to end of array
+
+    const el = document.createElement('div');
+    el.setAttribute('data-hid', hit.id);
+    el.innerHTML = cardHTML(hit, false);
+    if (!hitVisible(hit)) el.style.display = 'none';
+    // Insert before the load-more button so WS hits stay on top
+    if (wrap) wrap.insertAdjacentElement('beforebegin', el);
+    else document.getElementById('feed').appendChild(el);
+  }
+
+  // Advance DB offset by full page size (not just what was new) to keep paging in sync
+  liveDbOffset += returned.length;
+
+  if (liveDbTotal > 0) document.getElementById('empty').style.display = 'none';
+
+  // Restore button / toggle visibility
+  if (wrap) {
+    const hasMore = liveDbOffset < liveDbTotal;
+    wrap.classList.toggle('hidden', !hasMore);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Load older`;
+    }
+  }
+}
+
+function _updateHitCounter(flash) {
+  const hc = document.getElementById('hit-count');
+  if (!hc) return;
+  hc.textContent = `${liveDbTotal} hit${liveDbTotal !== 1 ? 's' : ''}`;
+  if (flash) {
+    hc.classList.remove('badge-flash');
+    requestAnimationFrame(() => { hc.offsetWidth; hc.classList.add('badge-flash'); });
+  }
+}
+
+// ── API ────────────────────────────────────────────────────────────────────
+async function apiFetch(url, opts = {}) {
+  const r = await fetch(url, opts);
+  return r.json();
+}
+async function saveConfig() {
+  await apiFetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cfg) });
+}
+function debounceSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveConfig, 600); }
+
+// ── WebSocket ──────────────────────────────────────────────────────────────
+let ws;
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws`);
+  ws.onopen  = () => setDot(true);
+  ws.onclose = () => { setDot(false); setTimeout(connectWS, 3000); };
+  ws.onerror = () => ws.close();
+  ws.onmessage = e => onMsg(JSON.parse(e.data));
+}
+function setDot(on) {
+  document.getElementById('ws-dot').innerHTML = on
+    ? '<span class="text-emerald-500 font-medium">● Live</span>'
+    : '<span class="text-slate-400">● Offline</span>';
+}
+async function onMsg(data) {
+  if (data.type === 'status') showToast(data.message, 'blue');
+  else if (data.type === 'error') showToast(data.message, 'red');
+  else if (data.type === 'hit') {
+    if (hitIds.has(data.id)) return;
+    hitIds.add(data.id);
+    hits.unshift(data);
+    liveDbTotal++;
+    _updateHitCounter(true);
+    document.getElementById('empty').style.display = 'none';
+    prependCard(data);
+    _notifyHit(data);
+    if (autoFilter) {
+      const lst = (cfg.listeners||[]).find(l => l.id === data.listener_id);
+      const fls = (lst?.filters||[]).filter(f => f.enabled);
+      if (fls.length) analyzeHit(data.id, fls, lst?.ai_credential_id||null, data.listener_id);
+    }
+  }
+}
+
+// ── Monitor ────────────────────────────────────────────────────────────────
+async function startAll()          { const r=await apiFetch('/api/monitor/start',{method:'POST'}); if(r.started?.length)showToast(`Started: ${r.started.join(', ')}`,'green'); else if(!r.ok)showToast(r.message||'Nothing to start','red'); setTimeout(pollStatus,800); }
+async function stopAll()           { await apiFetch('/api/monitor/stop',{method:'POST'}); setTimeout(pollStatus,800); }
+async function startListener(lid)  { const r=await apiFetch(`/api/listeners/${lid}/start`,{method:'POST'}); if(!r.ok)showToast(r.message,'red'); setTimeout(pollStatus,800); }
+async function stopListener(lid)   { await apiFetch(`/api/listeners/${lid}/stop`,{method:'POST'}); setTimeout(pollStatus,800); }
+
+// ── Status polling ──────────────────────────────────────────────────────────
+async function pollStatus() {
+  listenerStatus = await apiFetch('/api/listeners/status').catch(()=>({}));
+  updateStatusDots();
+}
+function updateStatusDots() {
+  document.querySelectorAll('[data-status-lid]').forEach(el => {
+    const r = listenerStatus[el.getAttribute('data-status-lid')];
+    el.className = r ? 'w-2 h-2 rounded-full bg-emerald-400 pulse-dot flex-shrink-0' : 'w-2 h-2 rounded-full bg-slate-300 flex-shrink-0';
+  });
+  document.querySelectorAll('[data-startstop-lid]').forEach(btn => {
+    const lid=btn.getAttribute('data-startstop-lid'), r=listenerStatus[lid];
+    btn.innerHTML = r ? '<svg width="8" height="8" viewBox="0 0 9 9" fill="currentColor"><rect width="9" height="9" rx="1"/></svg> Stop' : '<svg width="8" height="10" viewBox="0 0 9 11" fill="currentColor"><path d="M0 0l9 5.5L0 11V0z"/></svg> Start';
+    btn.className = r ? 'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-medium transition-colors' : 'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium transition-colors';
+    btn.onclick = r ? ()=>stopListener(lid) : ()=>startListener(lid);
+  });
+  document.querySelectorAll('[data-pill-lid]').forEach(el => {
+    el.className = listenerStatus[el.getAttribute('data-pill-lid')] ? 'w-1.5 h-1.5 rounded-full bg-emerald-400 ml-1.5 flex-shrink-0' : 'w-1.5 h-1.5 rounded-full bg-slate-300 ml-1.5 flex-shrink-0';
+  });
+}
+
+// ── View mode (Live / History) ──────────────────────────────────────────────
+function setViewMode(mode) {
+  viewMode = mode;
+  const isHistory = mode === 'history';
+  document.getElementById('btn-live').classList.toggle('active', !isHistory);
+  document.getElementById('btn-history').classList.toggle('active', isHistory);
+  document.getElementById('feed').classList.toggle('hidden', isHistory);
+  document.getElementById('history-feed').classList.toggle('hidden', !isHistory);
+  document.getElementById('history-toolbar').classList.toggle('hidden', !isHistory);
+  document.getElementById('live-controls').classList.toggle('hidden', isHistory);
+  if (isHistory) loadHistory(true);
+}
+
+// ── History ─────────────────────────────────────────────────────────────────
+function populateHistoryListenerFilter() {
+  const sel = document.getElementById('h-listener');
+  if (!sel) return;
+  const ls = cfg.listeners || [];
+  sel.innerHTML = '<option value="">All listeners</option>' +
+    ls.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+}
+
+async function loadHistory(reset = false) {
+  if (reset) { hOffset = 0; hTotal = 0; document.getElementById('history-cards').innerHTML = ''; }
+
+  const q = document.getElementById('h-q')?.value.trim() || '';
+  const params = new URLSearchParams({
+    limit:  H_LIMIT,
+    offset: hOffset,
+    ...(hFilters.listener_id ? { listener_id: hFilters.listener_id } : {}),
+    ...(hFilters.kind        ? { kind:        hFilters.kind }        : {}),
+    ...(q                    ? { q }                                  : {}),
+  });
+
+  const data = await apiFetch(`/api/hits?${params}`).catch(() => ({ hits:[], total:0 }));
+  hTotal = data.total;
+
+  if (reset) {
+    // Load stats too
+    loadHistoryStats();
+  }
+
+  const info = document.getElementById('h-info');
+  info.textContent = hTotal === 0 ? '' : `${hTotal.toLocaleString()} hit${hTotal!==1?'s':''} found`;
+
+  const empty = document.getElementById('h-empty');
+  empty.classList.toggle('hidden', hTotal > 0 || hOffset > 0);
+
+  const container = document.getElementById('history-cards');
+  for (const hit of data.hits) {
+    const el = document.createElement('div');
+    el.setAttribute('data-hid', hit.id + '-h');
+    el.innerHTML = cardHTML(hit, true);
+    container.appendChild(el);
+  }
+
+  hOffset += data.hits.length;
+  const btn = document.getElementById('h-load-more');
+  btn.classList.toggle('hidden', hOffset >= hTotal);
+}
+
+async function loadHistoryStats() {
+  const stats = await apiFetch('/api/hits/stats').catch(() => ({}));
+  const bar   = document.getElementById('h-stats');
+  if (!stats.total) { bar.innerHTML = ''; return; }
+  bar.innerHTML = [
+    { label:'Total saved', value: stats.total?.toLocaleString() || '0', color:'text-slate-700' },
+    { label:'Today',       value: stats.today?.toLocaleString() || '0', color:'text-blue-600'  },
+    { label:'AI Passed',   value: stats.passed?.toLocaleString()|| '0', color:'text-emerald-600'},
+  ].map(s => `
+    <div class="card px-4 py-3">
+      <div class="text-xs text-slate-400 font-medium">${s.label}</div>
+      <div class="text-2xl font-bold mt-0.5 ${s.color}">${s.value}</div>
+    </div>`).join('');
+}
+
+async function exportHistory() {
+  const qs = new URLSearchParams({
+    ...(hFilters.listener_id ? { listener_id: hFilters.listener_id } : {}),
+    ...(hFilters.kind        ? { kind:        hFilters.kind }        : {}),
+  });
+  window.location = `/api/hits/export?${qs}`;
+}
+
+// ── Stream cards ─────────────────────────────────────────────────────────────
+function renderStreamPills() {
+  const ls = cfg.listeners || [];
+  document.getElementById('stream-pills').innerHTML = [
+    `<button class="pill ${streamFilter===null?'active':''}" onclick="setStreamFilter(null)">All</button>`,
+    ...ls.map(l => `<button class="pill flex items-center ${streamFilter===l.id?'active':''}" onclick="setStreamFilter('${l.id}')">${esc(l.name)}<span data-pill-lid="${l.id}" class="${listenerStatus[l.id]?'bg-emerald-400':'bg-slate-300'} w-1.5 h-1.5 rounded-full ml-1.5 flex-shrink-0"></span></button>`),
+  ].join('');
+}
+
+function setStreamFilter(lid) {
+  streamFilter = lid;
+  renderStreamPills();
+  _reapplyVisibility();
+}
+
+function setKindFilter(kind) {
+  kindFilter = kind;
+  ['all','post','comment'].forEach(k => {
+    const btn = document.getElementById(`kf-${k}`);
+    if (btn) btn.classList.toggle('active', (k === 'all' ? null : k) === kind);
+  });
+  _reapplyVisibility();
+}
+
+function hitVisible(hit) {
+  if (streamFilter && hit.listener_id !== streamFilter) return false;
+  if (kindFilter   && hit.kind        !== kindFilter)   return false;
+  if (statusFilter && (hit.status || 'new') !== statusFilter) return false;
+  if (hideRejected && hit.filter_result?.passed === false) return false;
+  return true;
+}
+
+function toggleHideRejected(val) {
+  hideRejected = val;
+  _reapplyVisibility();
+}
+
+function _reapplyVisibility() {
+  document.querySelectorAll('[data-hid]').forEach(el => {
+    const hid = el.getAttribute('data-hid');
+    if (hid.endsWith('-h')) return;
+    const hit = hits.find(h => h.id === hid);
+    if (hit) el.style.display = hitVisible(hit) ? '' : 'none';
+  });
+}
+
+function prependCard(hit) {
+  const el = document.createElement('div');
+  el.setAttribute('data-hid', hit.id);
+  el.innerHTML = cardHTML(hit, false);
+  if (!hitVisible(hit)) el.style.display = 'none';
+  // Insert first, then animate — setting the class before DOM insertion
+  // means the browser skips the `from` keyframe entirely.
+  document.getElementById('empty').insertAdjacentElement('afterend', el);
+  requestAnimationFrame(() => el.classList.add('card-new'));
+}
+
+function updateCard(hitId, isHistory = false) {
+  const suffix = isHistory ? '-h' : '';
+  const hit    = hits.find(h => h.id === hitId);
+  const el     = document.querySelector(`[data-hid="${CSS.escape(hitId + suffix)}"]`);
+  if (!hit || !el) return;
+  el.innerHTML = cardHTML(hit, isHistory);
+  if (!isHistory) el.style.display = hitVisible(hit) ? '' : 'none';
+}
+
+const STATUS_CFG = {
+  new:       { label:'New',         cls:'st-new'      },
+  reviewing: { label:'Reviewing',   cls:'st-reviewing' },
+  replied:   { label:'Replied',     cls:'st-replied'   },
+  converted: { label:'Converted ✓', cls:'st-converted' },
+  skipped:   { label:'Skipped',     cls:'st-skipped'   },
+};
+
+function statusBadgeHTML(hit, isHistory) {
+  const s   = hit.status || 'new';
+  const sc  = STATUS_CFG[s] || STATUS_CFG.new;
+  const uid = hit.id + (isHistory ? '-h' : '');
+  return `<div class="relative inline-block">
+    <button onclick="toggleStatusMenu('${uid}','${hit.id}','${hit.listener_id||''}')"
+      class="text-xs px-2 py-0.5 rounded-md font-medium cursor-pointer transition-colors ${sc.cls}">${sc.label}</button>
+    <div id="stm-${uid}" class="st-menu hidden">
+      ${Object.entries(STATUS_CFG).map(([k,v])=>
+        `<button onclick="setHitStatus('${hit.id}','${hit.listener_id||''}','${k}','${uid}')"
+          class="${k===s?'font-semibold text-slate-900':'text-slate-600'}">${v.label}</button>`).join('')}
+    </div>
+  </div>`;
+}
+
+function cardHTML(hit, isHistory = false) {
+  const isPost = hit.kind === 'post';
+  const age    = timeAgo((hit.ts || 0) * 1000);
+  const typeBadge = isPost
+    ? '<span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 border border-blue-100">POST</span>'
+    : '<span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-violet-50 text-violet-600 border border-violet-100">COMMENT</span>';
+
+  let filterBadge = '';
+  if (hit.analyzing)
+    filterBadge = '<span class="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100"><span class="spin">⟳</span> Analyzing</span>';
+  else if (hit.filter_result?.error)
+    filterBadge = `<span class="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded-md border border-red-100" title="${esc(hit.filter_result.error)}">⚠ Error</span>`;
+  else if (hit.filter_result?.passed === true)
+    filterBadge = '<span class="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 font-medium">✓ Passed</span>';
+  else if (hit.filter_result?.passed === false)
+    filterBadge = '<span class="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-100 font-medium">✗ Rejected</span>';
+
+  const steps = (hit.filter_result?.results || []).map(r => {
+    const cls = r.skipped ? 'text-slate-400' : r.passed === false ? 'text-red-500' : 'text-emerald-600';
+    return `<div class="text-xs ${cls}"><span class="font-medium">${esc(r.step)}:</span> ${r.skipped?'skipped':r.error?esc(r.error):esc(r.response||'')}</div>`;
+  }).join('');
+
+  const dimmed      = hit.filter_result?.passed === false ? 'opacity-60' : '';
+  const noClick     = hit.analyzing ? 'opacity-50 pointer-events-none' : '';
+  const analyzeCall = `analyzeHit('${hit.id}',null,null,'${hit.listener_id||''}',${isHistory})`;
+
+  return `
+    <div class="card p-4 hover:border-slate-200 transition-all ${dimmed}">
+      <div class="flex items-start gap-3">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center flex-wrap gap-2 mb-2.5">
+            ${typeBadge}
+            ${statusBadgeHTML(hit, isHistory)}
+            ${hit.listener_name ? `<button onclick="setStreamFilter('${hit.listener_id}')" class="text-xs px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 hover:bg-slate-200 border border-slate-200 transition-colors">${esc(hit.listener_name)}</button>` : ''}
+            <span class="text-sm font-semibold text-orange-500">r/${esc(hit.subreddit||'')}</span>
+            <span class="text-sm text-slate-400">u/${esc(hit.author||'')}</span>
+            <span class="text-xs text-slate-300">${age}</span>
+            ${filterBadge}
+          </div>
+          ${hit.title ? `<div class="text-sm font-semibold text-slate-800 mb-1 leading-snug line-clamp-1">${esc(hit.title)}</div>` : ''}
+          <div class="text-xs text-slate-500 leading-relaxed line-clamp-2 mb-2.5">${esc(hit.excerpt||'')}</div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded-md">${esc(hit.match||'')}</span>
+            ${hit.reply_draft ? '<span class="text-xs text-violet-500 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-md">Draft saved</span>' : ''}
+          </div>
+          ${steps ? `<div class="mt-2.5 pt-2.5 border-t border-slate-100 space-y-1">${steps}</div>` : ''}
+        </div>
+        <div class="flex flex-col gap-1.5 flex-shrink-0 ml-2">
+          <a href="${esc(hit.url||'')}" target="_blank" rel="noopener"
+            class="flex items-center justify-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-700 text-white font-medium transition-colors">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg> Open
+          </a>
+          <button onclick="openThreadPanel('${hit.post_id||hit.id}','${hit.listener_id||''}','${hit.id}')"
+            class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium transition-colors">📖 Thread</button>
+          <button onclick="openReplyPanel('${hit.id}',${isHistory})"
+            class="text-xs px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium transition-colors">✍ Reply</button>
+          <button onclick="${analyzeCall}"
+            class="text-xs px-3 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 font-medium transition-colors ${noClick}">🤖 Analyze</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function analyzeHit(hitId, filtersOverride, credOverride, listenerId, isHistory = false) {
+  // Find or build hit object
+  let hit = hits.find(h => h.id === hitId);
+  if (!hit && isHistory) {
+    // For history hits, create a temporary object from the card's data
+    const el = document.querySelector(`[data-hid="${CSS.escape(hitId + '-h')}"]`);
+    if (!el) return;
+    hit = { id: hitId, listener_id: listenerId, analyzing: false, filter_result: null };
+  }
+  if (!hit || hit.analyzing) return;
+
+  const lst     = (cfg.listeners||[]).find(l => l.id === (listenerId || hit.listener_id));
+  const filters = filtersOverride || (lst?.filters||[]).filter(f => f.enabled);
+  const credId  = credOverride  !== undefined ? credOverride : (lst?.ai_credential_id||null);
+
+  if (!filters.length) { showToast('No AI filter steps for this listener', 'gray'); return; }
+
+  hit.analyzing = true; hit.filter_result = null;
+  if (!isHistory) updateCard(hitId, false);
+
+  const text   = [hit.title?`Title: ${hit.title}`:'', `Subreddit: r/${hit.subreddit||''}`, `Match: ${hit.match||''}`, `Excerpt: ${hit.excerpt||''}`].filter(Boolean).join('\n\n');
+  const result = await apiFetch('/api/filter/test', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ text, filters, credential_id: credId, hit_id: hitId, listener_id: listenerId || hit.listener_id }),
+  }).catch(e => ({error: e.message}));
+
+  hit.analyzing = false; hit.filter_result = result;
+  if (!isHistory) updateCard(hitId, false);
+
+  // Fire notifications if AI passed
+  if (result?.passed) {
+    _pushBrowserNotif(hit);
+    _sendExternalNotify(hit, result.results);
+  }
+
+  // Refresh history card if in history view
+  if (isHistory) {
+    const el = document.querySelector(`[data-hid="${CSS.escape(hitId + '-h')}"]`);
+    if (el) el.innerHTML = cardHTML({ ...hit, id: hitId, listener_id: listenerId }, true);
+  }
+}
+
+function clearHits() {
+  if (!confirm('Clear live feed? (Saved history in DB is not affected)')) return;
+  hits=[]; hitIds.clear(); liveDbOffset=0; liveDbTotal=0;
+  document.getElementById('hit-count').textContent = '0 hits';
+  document.getElementById('feed').innerHTML = `
+    <div id="empty" class="flex flex-col items-center justify-center py-24 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M2 12h3m14 0h3M12 2v3m0 14v3M4.93 4.93l2.12 2.12m9.9 9.9 2.12 2.12M4.93 19.07l2.12-2.12m9.9-9.9 2.12-2.12"/></svg>
+      </div>
+      <div class="text-slate-700 font-semibold text-lg">No hits yet</div>
+      <div class="text-slate-400 text-sm mt-1">Add credentials in Vault, create a listener, then click Start All</div>
+    </div>
+    <div id="live-load-more-wrap" class="hidden flex justify-center pt-1 pb-4">
+      <button onclick="loadRecentHits(true)"
+        class="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-500 rounded-xl text-sm font-medium border border-slate-200 transition-colors flex items-center gap-2">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        Load older
+      </button>
+    </div>`;
+}
+
+function exportCSV() {
+  const rows=[['ts','listener','kind','subreddit','author','match','title','url','excerpt','filter_passed']];
+  for (const h of hits) rows.push([new Date((h.ts||0)*1000).toISOString(),h.listener_name||'',h.kind||'',h.subreddit||'',h.author||'',h.match||'',h.title||'',h.url||'',h.excerpt||'',h.filter_result?(h.filter_result.passed?'yes':'no'):'']);
+  const csv=rows.map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),download:`redsignal_live_${Date.now()}.csv`}).click();
+}
+
+// ── Vault ───────────────────────────────────────────────────────────────────
+function renderVault() {
+  const all=cfg.credentials||[], reddit=all.filter(c=>c.type==='reddit'), ai=all.filter(c=>['anthropic','openai','ollama'].includes(c.type));
+  document.getElementById('vault-reddit').innerHTML=reddit.length?reddit.map(credCardHTML).join(''):'<div class="text-slate-400 text-sm py-6 text-center">No Reddit accounts yet.</div>';
+  document.getElementById('vault-ai').innerHTML=ai.length?ai.map(credCardHTML).join(''):'<div class="text-slate-400 text-sm py-6 text-center">No AI keys yet.</div>';
+}
+
+function credCardHTML(c) {
+  const isEditing = editingCred?.id === c.id, ec = editingCred;
+
+  // ── visual config per type ──────────────────────────────────────────────
+  const TYPE_UI = {
+    reddit:    { bg:'bg-orange-100', color:'text-orange-500',
+      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg>' },
+    anthropic: { bg:'bg-violet-100', color:'text-violet-600',
+      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>' },
+    openai:    { bg:'bg-emerald-100', color:'text-emerald-600',
+      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83m9.9 9.9 2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9 2.83-2.83"/></svg>' },
+    ollama:    { bg:'bg-slate-100',   color:'text-slate-500',
+      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 9h8M8 12h6M8 15h4"/></svg>' },
+  };
+  const ui = TYPE_UI[c.type] || TYPE_UI.anthropic;
+
+  // ── collapsed card ──────────────────────────────────────────────────────
+  if (!isEditing) {
+    let preview, badge;
+    if (c.type === 'reddit')   { preview = c.client_id ? `${c.client_id.slice(0,8)}…` : 'No Client ID'; badge = ''; }
+    if (c.type === 'anthropic'){ preview = c.api_key ? `sk-ant-…${c.api_key.slice(-4)}` : 'No key set'; badge = '<span class="text-xs bg-violet-50 text-violet-500 border border-violet-100 px-1.5 py-0.5 rounded-md font-medium">Claude</span>'; }
+    if (c.type === 'openai')   { preview = c.api_key ? `sk-…${c.api_key.slice(-4)}` : 'No key set'; badge = '<span class="text-xs bg-emerald-50 text-emerald-600 border border-emerald-100 px-1.5 py-0.5 rounded-md font-medium">OpenAI</span>'; }
+    if (c.type === 'ollama')   { preview = c.base_url || 'http://localhost:11434'; badge = '<span class="text-xs bg-slate-100 text-slate-500 border border-slate-200 px-1.5 py-0.5 rounded-md font-medium">Local</span>'; }
+    const subline = c.type === 'reddit' && c.user_agent ? `  ·  ${c.user_agent.slice(0,30)}` : (c.model ? `  ·  model: ${c.model}` : '');
+    const field = c.type === 'reddit' ? 'reddit_credential_id' : 'ai_credential_id';
+    const uses  = (cfg.listeners||[]).filter(l=>l[field]===c.id).length;
+    return `<div class="card px-4 py-3.5 flex items-center gap-3.5">
+      <div class="w-9 h-9 rounded-xl ${ui.bg} ${ui.color} flex items-center justify-center flex-shrink-0">${ui.icon}</div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="font-semibold text-sm text-slate-800">${esc(c.name)}</span>
+          ${badge}
+        </div>
+        <div class="text-xs text-slate-400 mt-0.5 font-mono truncate">${esc(preview)}${esc(subline)}</div>
+      </div>
+      ${uses?`<span class="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full flex-shrink-0">${uses} listener${uses!==1?'s':''}</span>`:''}
+      <button onclick="editCred('${c.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium transition-colors flex-shrink-0">Edit</button>
+      <button onclick="deleteCred('${c.id}')" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0">×</button>
+    </div>`;
+  }
+
+  // ── edit form per type ──────────────────────────────────────────────────
+  let fields = '';
+  if (c.type === 'reddit') {
+    fields = `
+    <label class="block"><span class="text-xs font-medium text-slate-500">Name</span><input class="inp mt-1.5" value="${esc(ec.name||'')}" oninput="editingCred.name=this.value"></label>
+    <div class="grid grid-cols-2 gap-3">
+      <label class="block"><span class="text-xs font-medium text-slate-500">Client ID</span><input class="inp mt-1.5 font-mono text-sm" value="${esc(ec.client_id||'')}" oninput="editingCred.client_id=this.value"></label>
+      <label class="block"><span class="text-xs font-medium text-slate-500">Client Secret</span><input class="inp mt-1.5 font-mono text-sm" type="password" value="${esc(ec.client_secret||'')}" oninput="editingCred.client_secret=this.value"></label>
+    </div>
+    <label class="block"><span class="text-xs font-medium text-slate-500">User Agent</span><input class="inp mt-1.5 text-sm" value="${esc(ec.user_agent||'')}" oninput="editingCred.user_agent=this.value">
+    <p class="text-xs text-slate-400 mt-1.5">Format: <code class="bg-slate-100 px-1 rounded">appname/1.0 by u/yourname</code></p></label>
+    <a href="https://www.reddit.com/prefs/apps" target="_blank" class="inline-flex items-center gap-1 text-xs text-blue-500 hover:underline">↗ reddit.com/prefs/apps → create app → script</a>`;
+  } else if (c.type === 'anthropic') {
+    fields = `
+    <label class="block"><span class="text-xs font-medium text-slate-500">Name</span><input class="inp mt-1.5" value="${esc(ec.name||'')}" oninput="editingCred.name=this.value"></label>
+    <label class="block"><span class="text-xs font-medium text-slate-500">API Key</span><input class="inp mt-1.5 font-mono text-sm" type="password" placeholder="sk-ant-…" value="${esc(ec.api_key||'')}" oninput="editingCred.api_key=this.value">
+    <a href="https://console.anthropic.com/settings/keys" target="_blank" class="inline-flex items-center gap-1 text-xs text-blue-500 hover:underline mt-1.5">↗ console.anthropic.com</a></label>
+    <label class="block"><span class="text-xs font-medium text-slate-500">Model <span class="font-normal text-slate-400">(default: claude-haiku-4-5-20251001)</span></span>
+    <input class="inp mt-1.5 text-sm font-mono" placeholder="claude-haiku-4-5-20251001" value="${esc(ec.model||'')}" oninput="editingCred.model=this.value"></label>`;
+  } else if (c.type === 'openai') {
+    fields = `
+    <label class="block"><span class="text-xs font-medium text-slate-500">Name</span><input class="inp mt-1.5" value="${esc(ec.name||'')}" oninput="editingCred.name=this.value"></label>
+    <label class="block"><span class="text-xs font-medium text-slate-500">API Key</span><input class="inp mt-1.5 font-mono text-sm" type="password" placeholder="sk-…" value="${esc(ec.api_key||'')}" oninput="editingCred.api_key=this.value">
+    <a href="https://platform.openai.com/api-keys" target="_blank" class="inline-flex items-center gap-1 text-xs text-blue-500 hover:underline mt-1.5">↗ platform.openai.com/api-keys</a></label>
+    <label class="block"><span class="text-xs font-medium text-slate-500">Model <span class="font-normal text-slate-400">(default: gpt-4o-mini)</span></span>
+    <input class="inp mt-1.5 text-sm font-mono" placeholder="gpt-4o-mini" value="${esc(ec.model||'')}" oninput="editingCred.model=this.value"></label>`;
+  } else if (c.type === 'ollama') {
+    fields = `
+    <label class="block"><span class="text-xs font-medium text-slate-500">Name</span><input class="inp mt-1.5" value="${esc(ec.name||'')}" oninput="editingCred.name=this.value"></label>
+    <label class="block"><span class="text-xs font-medium text-slate-500">Base URL</span>
+    <input class="inp mt-1.5 text-sm font-mono" placeholder="http://localhost:11434" value="${esc(ec.base_url||'http://localhost:11434')}" oninput="editingCred.base_url=this.value">
+    <p class="text-xs text-slate-400 mt-1.5">Ollama must be running locally. Start with <code class="bg-slate-100 px-1 rounded">ollama serve</code></p></label>
+    <label class="block"><span class="text-xs font-medium text-slate-500">Model <span class="font-normal text-slate-400">(default: llama3.2)</span></span>
+    <input class="inp mt-1.5 text-sm font-mono" placeholder="llama3.2" value="${esc(ec.model||'')}" oninput="editingCred.model=this.value">
+    <p class="text-xs text-slate-400 mt-1.5">Pull models with: <code class="bg-slate-100 px-1 rounded">ollama pull llama3.2</code></p></label>`;
+  }
+
+  return `<div class="card border-blue-200 p-4 space-y-3.5">${fields}
+    <div class="flex gap-2 pt-1">
+      <button onclick="saveCred()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-colors">Save</button>
+      <button onclick="cancelEditCred()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-sm font-medium transition-colors">Cancel</button>
+    </div></div>`;
+}
+
+function addCred(type) {
+  const id = crypto.randomUUID();
+  let base;
+  if (type === 'reddit')    base = {id,type,name:'New Reddit Account',client_id:'',client_secret:'',user_agent:'redsignal/1.0 by u/yourname'};
+  else if (type==='openai') base = {id,type,name:'New OpenAI Key',api_key:'',model:''};
+  else if (type==='ollama') base = {id,type,name:'Local Ollama',base_url:'http://localhost:11434',model:''};
+  else                      base = {id,type:'anthropic',name:'New Anthropic Key',api_key:'',model:''};
+  cfg.credentials=[...(cfg.credentials||[]),base]; editingCred={...base}; renderVault();
+}
+function editCred(id)    { const c=(cfg.credentials||[]).find(x=>x.id===id); if(!c)return; editingCred={...c}; renderVault(); }
+function cancelEditCred(){
+  if(editingCred){
+    const c=(cfg.credentials||[]).find(x=>x.id===editingCred.id);
+    const isEmpty = c && !c.client_id && !c.client_secret && !c.api_key && !c.base_url;
+    if(isEmpty) cfg.credentials=cfg.credentials.filter(x=>x.id!==editingCred.id);
+  }
+  editingCred=null; renderVault();
+}
+async function saveCred(){ if(!editingCred)return; const idx=(cfg.credentials||[]).findIndex(x=>x.id===editingCred.id); if(idx>=0)cfg.credentials[idx]={...editingCred}; else cfg.credentials.push({...editingCred}); editingCred=null; await saveConfig(); renderVault(); if(editingLid)renderModal(); }
+async function deleteCred(id){ if(!confirm('Delete this credential?'))return; cfg.credentials=(cfg.credentials||[]).filter(x=>x.id!==id); await saveConfig(); renderVault(); }
+
+// ── Listeners ────────────────────────────────────────────────────────────────
+function credName(id,type){
+  if(type==='ai') return((cfg.credentials||[]).find(x=>x.id===id&&['anthropic','openai','ollama'].includes(x.type))||{}).name||null;
+  return((cfg.credentials||[]).find(x=>x.id===id&&x.type===type)||{}).name||null;
+}
+function renderListenerList() {
+  const ls=cfg.listeners||[], list=document.getElementById('listener-list'), empty=document.getElementById('listener-empty');
+  empty.classList.toggle('hidden',ls.length>0);
+  list.innerHTML=ls.map(l=>{
+    const rName=credName(l.reddit_credential_id,'reddit'), aiName=credName(l.ai_credential_id,'ai');
+    const kwCnt=(l.keywords||[]).length, flCnt=(l.filters||[]).filter(f=>f.enabled).length;
+    return `<div class="card px-4 py-3.5 flex items-center gap-3.5">
+      <div data-status-lid="${l.id}" class="w-2 h-2 rounded-full ${listenerStatus[l.id]?'bg-emerald-400 pulse-dot':'bg-slate-300'} flex-shrink-0"></div>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-sm text-slate-800 truncate">${esc(l.name)}</div>
+        <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+          <span class="text-xs text-orange-500 font-medium">r/${esc(l.subreddits||'all')}</span>
+          ${rName?`<span class="text-xs text-slate-400">${esc(rName)}</span>`:'<span class="text-xs text-red-400 font-medium">⚠ No Reddit account</span>'}
+          ${aiName?`<span class="text-xs text-violet-500">${esc(aiName)}</span>`:''}
+          <span class="text-xs text-slate-300">${kwCnt} kw</span>
+          ${flCnt?`<span class="text-xs text-violet-400">${flCnt} filter${flCnt!==1?'s':''}</span>`:''}
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" ${l.enabled!==false?'checked':''} class="sr-only peer" onchange="toggleListenerEnabled('${l.id}',this.checked)">
+          <div class="w-8 h-4 bg-slate-200 rounded-full peer peer-checked:bg-slate-900 transition-colors"></div>
+          <div class="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></div>
+        </label>
+        <button data-startstop-lid="${l.id}" class="${listenerStatus[l.id]?'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-medium':'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium'}" onclick="${listenerStatus[l.id]?`stopListener('${l.id}')`:`startListener('${l.id}')`}">
+          ${listenerStatus[l.id]?'■ Stop':'▶ Start'}
+        </button>
+        <button onclick="openModal('${l.id}')" class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium transition-colors">Edit</button>
+        <button onclick="deleteListener('${l.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-400 transition-colors text-xl leading-none">×</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function addListener(){ const id=crypto.randomUUID(),lst={id,name:'New Listener',enabled:true,subreddits:'all',webhook:'',keywords:[],filters:[],reddit_credential_id:'',ai_credential_id:''}; cfg.listeners=[...(cfg.listeners||[]),lst]; await saveConfig(); renderListenerList(); renderStreamPills(); populateHistoryListenerFilter(); openModal(id); }
+async function deleteListener(lid){ if(!confirm('Delete this listener?'))return; cfg.listeners=(cfg.listeners||[]).filter(l=>l.id!==lid); await saveConfig(); renderListenerList(); renderStreamPills(); populateHistoryListenerFilter(); if(editingLid===lid)closeModal(); }
+async function toggleListenerEnabled(lid,val){ const l=(cfg.listeners||[]).find(x=>x.id===lid); if(l){l.enabled=val; await saveConfig();} }
+
+// ── Modal ────────────────────────────────────────────────────────────────────
+function openModal(lid){ editingLid=lid; document.getElementById('modal-backdrop').classList.remove('hidden'); document.getElementById('modal').classList.remove('hidden'); renderModal(); }
+function closeModal(){ editingLid=null; document.getElementById('modal-backdrop').classList.add('hidden'); document.getElementById('modal').classList.add('hidden'); renderListenerList(); renderStreamPills(); }
+function getLst(){ return(cfg.listeners||[]).find(l=>l.id===editingLid); }
+
+function renderModal() {
+  const l=getLst(); if(!l)return;
+  document.getElementById('modal-title').textContent=l.name;
+  const rCreds=(cfg.credentials||[]).filter(c=>c.type==='reddit'), aiCreds=(cfg.credentials||[]).filter(c=>['anthropic','openai','ollama'].includes(c.type));
+  const rOpts=rCreds.length?rCreds.map(c=>`<option value="${c.id}" ${l.reddit_credential_id===c.id?'selected':''}>${esc(c.name)}</option>`).join(''):'<option value="" disabled>No accounts — add in Vault</option>';
+  const aiOpts=[`<option value="" ${!l.ai_credential_id?'selected':''}>None</option>`,...aiCreds.map(c=>`<option value="${c.id}" ${l.ai_credential_id===c.id?'selected':''}>${esc(c.name)} (${c.type})</option>`)].join('');
+  const kws=l.keywords||[], fl=l.filters||[];
+
+  document.getElementById('modal-body').innerHTML=`
+    <section class="space-y-3.5">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Credentials</div>
+      <label class="block"><span class="text-sm font-medium text-slate-600">Reddit Account</span>
+        <select class="inp mt-1.5" onchange="updateLstField('reddit_credential_id',this.value);saveConfig()"><option value="">— Select —</option>${rOpts}</select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-600">AI Key <span class="font-normal text-slate-400">(for filters)</span></span>
+        <select class="inp mt-1.5" onchange="updateLstField('ai_credential_id',this.value);saveConfig()">${aiOpts}</select></label>
+      ${(!rCreds.length||!aiCreds.length)?`<p class="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">⚠ Missing credentials — <button class="underline font-medium" onclick="closeModal();showTab('vault')">open Vault</button></p>`:''}
+    </section>
+    <div class="border-t border-slate-100"></div>
+    <section class="space-y-3.5">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Configuration</div>
+      <label class="block"><span class="text-sm font-medium text-slate-600">Name</span>
+        <input class="inp mt-1.5" value="${esc(l.name)}" oninput="updateLstField('name',this.value);document.getElementById('modal-title').textContent=this.value" onchange="saveConfig()"></label>
+      <label class="block"><span class="text-sm font-medium text-slate-600">Subreddits</span>
+        <input class="inp mt-1.5" value="${esc(l.subreddits||'all')}" placeholder="all" oninput="updateLstField('subreddits',this.value)" onchange="saveConfig()">
+        <p class="text-xs text-slate-400 mt-1">Combine with +: <code class="bg-slate-100 px-1 rounded">SaaS+smallbusiness</code></p></label>
+      <label class="block"><span class="text-sm font-medium text-slate-600">Webhook <span class="font-normal text-slate-400">(optional)</span></span>
+        <input class="inp mt-1.5" value="${esc(l.webhook||'')}" placeholder="https://…" oninput="updateLstField('webhook',this.value)" onchange="saveConfig()"></label>
+    </section>
+    <div class="border-t border-slate-100"></div>
+    <section class="space-y-3">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Keywords <span class="font-normal normal-case">(Python regex)</span></div>
+      <div class="space-y-2">
+        ${kws.length===0?'<div class="text-slate-400 text-sm py-2 text-center">No keywords yet.</div>':kws.map((kw,i)=>`
+          <div class="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+            <span class="font-mono text-sm text-emerald-700 flex-1 truncate">${esc(kw)}</span>
+            <button onclick="removeKeyword(${i})" class="w-5 h-5 flex items-center justify-center rounded hover:bg-red-100 text-slate-300 hover:text-red-400 transition-colors">×</button>
+          </div>`).join('')}
+      </div>
+      <div class="flex gap-2">
+        <input id="m-kw-new" class="inp font-mono flex-1 text-sm" placeholder='e.g. work\\Worders?' onkeydown="if(event.key==='Enter')addKeyword()">
+        <button onclick="addKeyword()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium">Add</button>
+      </div>
+      <p class="text-xs text-slate-400">⚠ Restart listener after changing keywords.</p>
+      <!-- Regex tester -->
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+        <div class="text-xs font-semibold text-slate-500">Pattern tester</div>
+        <textarea rows="2" class="inp text-sm bg-white"
+          placeholder="Paste sample text here to test all patterns above…"
+          oninput="testRegex(this.value)"></textarea>
+        <div id="m-regex-result" class="text-xs leading-relaxed"></div>
+      </div>
+    </section>
+    <div class="border-t border-slate-100"></div>
+    <section class="space-y-3.5">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Notifications <span class="font-normal normal-case">(sent on every keyword match)</span></div>
+      <label class="block"><span class="text-sm font-medium text-slate-600">Slack Webhook
+        <span class="text-xs font-normal text-slate-400 ml-1">Block Kit format</span></span>
+        <input class="inp mt-1.5 text-sm" value="${esc(l.slack_webhook||'')}" placeholder="https://hooks.slack.com/services/…"
+               oninput="updateLstField('slack_webhook',this.value)" onchange="saveConfig()">
+        <span class="text-xs text-slate-400 mt-1 block">
+          Get at <a href="https://api.slack.com/messaging/webhooks" target="_blank" class="text-blue-500 hover:underline">api.slack.com/messaging/webhooks</a>
+        </span></label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block"><span class="text-sm font-medium text-slate-600">Telegram Bot Token</span>
+          <input class="inp mt-1.5 text-sm font-mono" type="password" value="${esc(l.telegram_bot_token||'')}" placeholder="123456:ABC…"
+                 oninput="updateLstField('telegram_bot_token',this.value)" onchange="saveConfig()"></label>
+        <label class="block"><span class="text-sm font-medium text-slate-600">Telegram Chat ID</span>
+          <input class="inp mt-1.5 text-sm font-mono" value="${esc(l.telegram_chat_id||'')}" placeholder="-100123…"
+                 oninput="updateLstField('telegram_chat_id',this.value)" onchange="saveConfig()"></label>
+      </div>
+      <p class="text-xs text-slate-400">Bot via <a href="https://t.me/BotFather" target="_blank" class="text-blue-500 hover:underline">@BotFather</a> · Chat ID via <a href="https://t.me/userinfobot" target="_blank" class="text-blue-500 hover:underline">@userinfobot</a>. AI-passed hits send a richer message with filter results.</p>
+      <p class="text-xs text-slate-400">🔔 Also enable the <strong>bell icon</strong> in the top bar for browser push notifications when AI filter passes.</p>
+    </section>
+    <div class="border-t border-slate-100"></div>
+    <section class="space-y-3">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Negative Keywords <span class="font-normal normal-case">(drop hit if any match)</span></div>
+      <div class="space-y-2" id="m-nkw-list">
+        ${(l.negative_keywords||[]).length === 0
+          ? '<div class="text-slate-400 text-sm py-1">None — all keyword matches pass through.</div>'
+          : (l.negative_keywords||[]).map((kw,i)=>`
+            <div class="flex items-center gap-2.5 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              <span class="font-mono text-sm text-red-600 flex-1 truncate">${esc(kw)}</span>
+              <button onclick="removeNegKw(${i})" class="w-5 h-5 flex items-center justify-center rounded hover:bg-red-100 text-red-300 hover:text-red-500">×</button>
+            </div>`).join('')}
+      </div>
+      <div class="flex gap-2">
+        <input id="m-nkw-new" class="inp font-mono flex-1 text-sm" placeholder='e.g. hate|terrible|not looking'
+               onkeydown="if(event.key==='Enter')addNegKw()">
+        <button onclick="addNegKw()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium">Add</button>
+      </div>
+    </section>
+    <div class="border-t border-slate-100"></div>
+    <section class="space-y-3">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Author Quality Filter</div>
+      <p class="text-xs text-slate-400">Skip posts from brand-new or low-karma accounts. Set to 0 to disable.</p>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block"><span class="text-sm font-medium text-slate-600">Min karma</span>
+          <input type="number" min="0" class="inp mt-1.5 text-sm" value="${l.min_karma||0}"
+                 oninput="updateLstField('min_karma',+this.value)" onchange="saveConfig()"></label>
+        <label class="block"><span class="text-sm font-medium text-slate-600">Min account age (days)</span>
+          <input type="number" min="0" class="inp mt-1.5 text-sm" value="${l.min_account_age_days||0}"
+                 oninput="updateLstField('min_account_age_days',+this.value)" onchange="saveConfig()"></label>
+      </div>
+    </section>
+    <div class="border-t border-slate-100"></div>
+    <section class="space-y-3.5">
+      <div class="flex items-center justify-between">
+        <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Schedule Window</div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" ${l.schedule_enabled?'checked':''} class="sr-only peer"
+                 onchange="updateLstField('schedule_enabled',this.checked);saveConfig();renderModal()">
+          <div class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:bg-blue-500 transition-colors"></div>
+          <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></div>
+        </label>
+      </div>
+      ${l.schedule_enabled ? `
+      <div class="space-y-3.5">
+        <label class="block"><span class="text-sm font-medium text-slate-600">Timezone</span>
+          <input class="inp mt-1.5 text-sm" value="${esc(l.schedule_timezone||'UTC')}" placeholder="UTC"
+                 oninput="updateLstField('schedule_timezone',this.value)" onchange="saveConfig()">
+          <p class="text-xs text-slate-400 mt-1">IANA format: <code class="bg-slate-100 px-1 rounded">America/New_York</code> · <code class="bg-slate-100 px-1 rounded">Europe/London</code> · <code class="bg-slate-100 px-1 rounded">Asia/Tokyo</code></p>
+        </label>
+        <div>
+          <span class="text-sm font-medium text-slate-600 block mb-2">Active days</span>
+          <div class="flex gap-1.5 flex-wrap">
+            ${[['Mon',1],['Tue',2],['Wed',3],['Thu',4],['Fri',5],['Sat',6],['Sun',0]].map(([d,n])=>{
+              const days=Array.isArray(l.schedule_days)?l.schedule_days:[0,1,2,3,4,5,6];
+              const on=days.includes(n);
+              return `<button onclick="toggleScheduleDay(${n})" class="text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${on?'bg-slate-900 text-white border-slate-900':'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}">${d}</button>`;
+            }).join('')}
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block"><span class="text-sm font-medium text-slate-600">Start hour <span class="font-normal text-slate-400">(0–23)</span></span>
+            <input type="number" min="0" max="23" class="inp mt-1.5 text-sm" value="${l.schedule_start??0}"
+                   oninput="updateLstField('schedule_start',+this.value)" onchange="saveConfig()"></label>
+          <label class="block"><span class="text-sm font-medium text-slate-600">End hour <span class="font-normal text-slate-400">(1–24)</span></span>
+            <input type="number" min="1" max="24" class="inp mt-1.5 text-sm" value="${l.schedule_end??24}"
+                   oninput="updateLstField('schedule_end',+this.value)" onchange="saveConfig()"></label>
+        </div>
+        <p class="text-xs text-slate-400">The listener only runs between <strong>start</strong> and <strong>end</strong> hour in the given timezone. Outside the window it pauses and auto-resumes when the window opens again.</p>
+      </div>` : '<p class="text-xs text-slate-400">Enable to restrict when this listener is active (e.g. business hours only).</p>'}
+    </section>
+    <div class="border-t border-slate-100"></div>
+    <section class="space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest">AI Filter Pipeline</div>
+        <button onclick="addFilter()" class="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-violet-100 hover:bg-violet-200 text-violet-700 font-medium">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Add Step
+        </button>
+      </div>
+      ${fl.length===0?'<div class="text-slate-400 text-sm py-1">No filter steps yet. Each hit can be evaluated by Claude before being marked passed/rejected.</div>':''}
+      <div class="space-y-3">
+        ${fl.map((f,i)=>`
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold bg-white border border-slate-200 text-slate-500 px-2 py-0.5 rounded-md flex-shrink-0">Step ${i+1}</span>
+              <input class="inp text-sm py-1.5 flex-1 bg-white" value="${esc(f.name)}" placeholder="Step name" oninput="getLst().filters[${i}].name=this.value" onchange="saveConfig()">
+              <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input type="checkbox" ${f.enabled?'checked':''} class="sr-only peer" onchange="getLst().filters[${i}].enabled=this.checked;saveConfig()">
+                <div class="w-8 h-4 bg-slate-200 rounded-full peer peer-checked:bg-violet-500 transition-colors"></div>
+                <div class="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></div>
+              </label>
+              <button onclick="removeFilter(${i})" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-100 text-slate-300 hover:text-red-400 text-lg leading-none flex-shrink-0">×</button>
+            </div>
+            <textarea rows="3" class="inp text-sm bg-white" placeholder="Prompt. Tell Claude to reply YES to pass or NO to reject." oninput="getLst().filters[${i}].prompt=this.value" onchange="saveConfig()">${esc(f.prompt)}</textarea>
+          </div>`).join('')}
+      </div>
+    </section>`;
+}
+
+function updateLstField(f,v){const l=getLst();if(l)l[f]=v;}
+
+function toggleScheduleDay(dayNum) {
+  const l = getLst(); if(!l) return;
+  const days = Array.isArray(l.schedule_days) ? [...l.schedule_days] : [0,1,2,3,4,5,6];
+  const idx  = days.indexOf(dayNum);
+  if(idx >= 0) days.splice(idx, 1); else days.push(dayNum);
+  l.schedule_days = days;
+  saveConfig(); renderModal();
+}
+function addNegKw(){const inp=document.getElementById('m-nkw-new'),val=inp.value.trim();if(!val)return;const l=getLst();if(!l)return;l.negative_keywords=[...(l.negative_keywords||[]),val];inp.value='';saveConfig();renderModal();}
+function removeNegKw(i){const l=getLst();if(l){l.negative_keywords.splice(i,1);saveConfig();renderModal();}}
+function addKeyword(){const inp=document.getElementById('m-kw-new'),val=inp.value.trim();if(!val)return;const l=getLst();if(!l)return;l.keywords=[...(l.keywords||[]),val];inp.value='';saveConfig();renderModal();}
+function removeKeyword(i){const l=getLst();if(l){l.keywords.splice(i,1);saveConfig();renderModal();}}
+function addFilter(){const l=getLst();if(!l)return;l.filters=[...(l.filters||[]),{name:`Step ${(l.filters||[]).length+1}`,prompt:'Is this post from someone who could benefit from our product? Reply YES if relevant, NO if not.',enabled:true}];saveConfig();renderModal();}
+function removeFilter(i){const l=getLst();if(l){l.filters.splice(i,1);saveConfig();renderModal();}}
+
+// ── Dark mode ────────────────────────────────────────────────────────────────
+(function initTheme() {
+  const saved = localStorage.getItem('rs-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (saved === 'dark' || (!saved && prefersDark)) applyDark(true);
+})();
+
+function applyDark(on) {
+  document.documentElement.classList.toggle('dark', on);
+  document.getElementById('icon-moon')?.classList.toggle('hidden', on);
+  document.getElementById('icon-sun')?.classList.toggle('hidden', !on);
+}
+
+function toggleDark() {
+  const on = !document.documentElement.classList.contains('dark');
+  applyDark(on);
+  localStorage.setItem('rs-theme', on ? 'dark' : 'light');
+}
+
+// ── Stream health ─────────────────────────────────────────────────────────────
+let _healthVisible = false;
+let _healthTimer   = null;
+
+function toggleHealth() {
+  _healthVisible = !_healthVisible;
+  document.getElementById('health-strip').classList.toggle('hidden', !_healthVisible);
+  if (_healthVisible) {
+    refreshHealth();
+    _healthTimer = setInterval(refreshHealth, 30000);
+  } else {
+    clearInterval(_healthTimer);
+  }
+}
+
+async function refreshHealth() {
+  const data = await apiFetch('/api/health').catch(() => null);
+  if (!data) return;
+  const strip = document.getElementById('health-strip');
+  const now   = data.now;
+
+  if (!data.listeners.length) {
+    strip.innerHTML = '<span class="text-slate-400">No listeners have run yet.</span>';
+    return;
+  }
+
+  strip.innerHTML = data.listeners.map(l => {
+    const age     = l.last_ts ? Math.round((now - l.last_ts) / 60) : null;
+    const stale   = l.running && age !== null && age > 5;
+    const dot     = l.running ? (stale ? '🟡' : '🟢') : '⚫';
+    const rateStr = l.running ? `${l.per_min}/min` : 'stopped';
+    const ageStr  = age === null ? 'no hits yet' : age === 0 ? 'just now' : `${age}m ago`;
+    return `<span class="flex items-center gap-1.5 whitespace-nowrap ${stale ? 'text-amber-600' : 'text-slate-500'}">
+      ${dot} <span class="font-medium">${esc(l.name)}</span>
+      <span class="text-slate-400">${rateStr} · ${ageStr}${stale ? ' ⚠' : ''}</span>
+    </span>`;
+  }).join('<span class="text-slate-300">·</span>');
+}
+
+// ── Browser notifications ──────────────────────────────────────────────────────
+let _browserNotif = false;
+
+function toggleBrowserNotif() {
+  if (_browserNotif) {
+    _browserNotif = false;
+    document.getElementById('notif-icon').style.color = '';
+    showToast('Browser notifications off', 'gray');
+    return;
+  }
+  if (!('Notification' in window)) { showToast('Browser notifications not supported', 'red'); return; }
+  if (Notification.permission === 'granted') {
+    _browserNotif = true;
+    document.getElementById('notif-icon').style.color = '#3b82f6';
+    showToast('Browser notifications on — fires when AI filter passes', 'green');
+  } else {
+    Notification.requestPermission().then(p => {
+      if (p === 'granted') {
+        _browserNotif = true;
+        document.getElementById('notif-icon').style.color = '#3b82f6';
+        showToast('Browser notifications on', 'green');
+      } else {
+        showToast('Permission denied', 'red');
+      }
+    });
+  }
+}
+
+function _pushBrowserNotif(hit) {
+  if (!_browserNotif || Notification.permission !== 'granted') return;
+  new Notification(`RedSignal — r/${hit.subreddit}`, {
+    body: `${hit.title || hit.excerpt?.slice(0, 100) || ''}`,
+    icon: '/static/icon.png',
+    tag:  hit.id,
+  });
+}
+
+async function _sendExternalNotify(hit, filterResults) {
+  const lst = (cfg.listeners || []).find(l => l.id === hit.listener_id);
+  if (!lst || (!lst.slack_webhook && !lst.telegram_bot_token)) return;
+  await apiFetch('/api/notify', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      listener_id:    hit.listener_id,
+      title:          hit.title || '',
+      url:            hit.url   || '',
+      subreddit:      hit.subreddit || '',
+      author:         hit.author    || '',
+      match:          hit.match     || '',
+      excerpt:        hit.excerpt   || '',
+      filter_results: filterResults || [],
+    }),
+  }).catch(() => {});
+}
+
+// ── Regex tester ──────────────────────────────────────────────────────────────
+function testRegex(sampleText) {
+  const l   = getLst();
+  const out = document.getElementById('m-regex-result');
+  if (!out) return;
+  if (!sampleText || !l?.keywords?.length) { out.innerHTML = ''; return; }
+  try {
+    const pat     = new RegExp('(?<![A-Za-z0-9])(?:' + l.keywords.join('|') + ')(?![A-Za-z0-9])', 'gi');
+    const matches = [...sampleText.matchAll(pat)];
+    if (!matches.length) {
+      out.innerHTML = '<span class="text-slate-400">No matches.</span>';
+    } else {
+      const hi = sampleText.replace(pat, m => `<mark class="bg-amber-200 text-amber-900 rounded px-0.5 font-medium">${esc(m)}</mark>`);
+      out.innerHTML = `<div class="text-emerald-600 font-semibold mb-1.5">${matches.length} match${matches.length!==1?'es':''}</div><div class="text-slate-600 leading-relaxed">${hi}</div>`;
+    }
+  } catch(e) {
+    out.innerHTML = `<span class="text-red-400 text-xs">Regex error: ${esc(e.message)}</span>`;
+  }
+}
+
+// ── Tab nav ─────────────────────────────────────────────────────────────────
+const TABS=['stream','analytics','vault','listeners','logs'];
+function showTab(name){
+  TABS.forEach(t=>{
+    document.getElementById(`p-${t}`)?.classList.toggle('hidden',t!==name);
+    document.getElementById(`t-${t}`)?.classList.toggle('active',t===name);
+  });
+  if(name==='analytics') loadStats(statsDays);
+  if(name==='logs')      switchLogTab('system');
+}
+
+// ── Analytics ────────────────────────────────────────────────────────────────
+let statsDays = 30;
+const _charts = {};
+
+function _mkChart(id, cfg) {
+  if(_charts[id]) _charts[id].destroy();
+  const el = document.getElementById(id);
+  if(!el) return;
+  _charts[id] = new Chart(el, cfg);
+}
+
+// Chart.js globals
+(function() {
+  if(typeof Chart === 'undefined') return;
+  Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+  Chart.defaults.font.size   = 11;
+  Chart.defaults.color       = '#64748b';
+  Chart.defaults.plugins.legend.display = false;
+  Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(15,23,42,.88)';
+  Chart.defaults.plugins.tooltip.padding         = 10;
+  Chart.defaults.plugins.tooltip.cornerRadius    = 8;
+  Chart.defaults.plugins.tooltip.titleFont       = {size:12,weight:'600'};
+  Chart.defaults.plugins.tooltip.bodyFont        = {size:11};
+  Chart.defaults.scale.grid.color   = '#f1f5f9';
+  Chart.defaults.scale.border.display = false;
+  Chart.defaults.animation.duration = 400;
+})();
+
+const C = {
+  blue:   '#3b82f6', violet: '#8b5cf6', orange: '#f97316',
+  emerald:'#10b981', red:    '#ef4444', amber:  '#f59e0b',
+  slate:  '#94a3b8', sky:    '#0ea5e9',
+  blueFill:   'rgba(59,130,246,.12)',
+  violetFill: 'rgba(139,92,246,.12)',
+  emeraldFill:'rgba(16,185,129,.10)',
+};
+const PALETTE = [C.blue,C.violet,C.orange,C.emerald,C.amber,C.red,C.sky,'#ec4899','#14b8a6','#a855f7','#f43f5e','#84cc16','#6366f1','#fb923c','#22d3ee'];
+
+async function loadStats(days) {
+  statsDays = days;
+  // update range buttons
+  [7,30,90,0].forEach(d => {
+    const b = document.getElementById(`st-${d}`);
+    if(b) b.classList.toggle('active', d===days);
+  });
+
+  const data = await apiFetch(`/api/stats?days=${days}`).catch(()=>null);
+  if(!data || !data.overview) return;
+
+  const hasData = data.overview.total > 0;
+  document.getElementById('st-empty').classList.toggle('hidden', hasData);
+  if(!hasData) return;
+
+  renderKPIs(data.overview);
+  renderTimeline(data.timeline);
+  renderTypeDonut(data.overview);
+  renderSubreddits(data.by_subreddit);
+  renderKeywords(data.by_keyword);
+  renderHours(data.by_hour);
+  renderListenerChart(data.by_listener);
+  renderDow(data.by_dow);
+  renderSubPassRate(data.sub_pass);
+  renderTopAuthors(data.top_authors);
+  renderMonthlyTable(data.by_month);
+}
+
+function renderKPIs(ov) {
+  const kpis = [
+    { label:'Total hits',       value: ov.total.toLocaleString(),        color:'text-slate-800' },
+    { label:'Posts',            value: ov.posts.toLocaleString(),         color:'text-blue-600'  },
+    { label:'Comments',         value: ov.comments.toLocaleString(),      color:'text-violet-600'},
+    { label:'AI Passed',        value: ov.passed.toLocaleString(),        color:'text-emerald-600'},
+    { label:'Pass rate',        value: ov.pass_rate!=null ? ov.pass_rate+'%' : '—', color:'text-emerald-600'},
+    { label:'Subreddits',       value: ov.unique_subs.toLocaleString(),   color:'text-orange-500'},
+    { label:'Unique authors',   value: ov.unique_authors.toLocaleString(),color:'text-slate-600' },
+  ];
+  document.getElementById('st-kpis').innerHTML = kpis.map(k=>`
+    <div class="card px-4 py-3">
+      <div class="text-xs text-slate-400 font-medium truncate">${k.label}</div>
+      <div class="text-2xl font-bold mt-0.5 ${k.color}">${k.value}</div>
+    </div>`).join('');
+}
+
+function renderTimeline(rows) {
+  if(!rows.length) return;
+  const labels = rows.map(r => {
+    const d = new Date(r.day + 'T00:00:00');
+    return d.toLocaleDateString('en', {month:'short', day:'numeric'});
+  });
+  _mkChart('ch-timeline', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Total',   data: rows.map(r=>r.total),    borderColor:C.blue,    backgroundColor:C.blueFill,    borderWidth:2, pointRadius:2, tension:.35, fill:true },
+        { label:'Posts',   data: rows.map(r=>r.posts),    borderColor:C.violet,  backgroundColor:C.violetFill,  borderWidth:1.5, pointRadius:0, tension:.35, fill:true },
+        { label:'Passed',  data: rows.map(r=>r.passed),   borderColor:C.emerald, backgroundColor:C.emeraldFill, borderWidth:1.5, pointRadius:0, tension:.35, fill:true },
+      ]
+    },
+    options: {
+      maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      scales: {
+        x: { ticks:{ maxTicksLimit:10, maxRotation:0 } },
+        y: { beginAtZero:true, ticks:{ precision:0 } }
+      },
+      plugins: { legend:{ display:false } }
+    }
+  });
+}
+
+function renderTypeDonut(ov) {
+  const total = ov.posts + ov.comments;
+  if(!total) return;
+  _mkChart('ch-type', {
+    type:'doughnut',
+    data:{
+      labels:['Posts','Comments'],
+      datasets:[{ data:[ov.posts, ov.comments], backgroundColor:[C.blue, C.violet], borderWidth:0, hoverOffset:4 }]
+    },
+    options:{
+      maintainAspectRatio:false, cutout:'72%',
+      plugins:{ tooltip:{ callbacks:{ label: ctx=>`${ctx.label}: ${ctx.raw.toLocaleString()} (${Math.round(ctx.raw/total*100)}%)` } } }
+    }
+  });
+  document.getElementById('st-type-labels').innerHTML = `
+    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>Posts ${Math.round(ov.posts/total*100)}%</span>
+    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-violet-500 inline-block"></span>Comments ${Math.round(ov.comments/total*100)}%</span>`;
+}
+
+function renderSubreddits(rows) {
+  if(!rows.length) return;
+  const labels = rows.map(r=>'r/'+r.name);
+  _mkChart('ch-subs', {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        { label:'Hits',   data:rows.map(r=>r.count),  backgroundColor:C.blue,   borderRadius:4 },
+        { label:'Passed', data:rows.map(r=>r.passed), backgroundColor:C.emerald,borderRadius:4 },
+      ]
+    },
+    options:{
+      maintainAspectRatio:false, indexAxis:'y',
+      interaction:{mode:'index',intersect:false},
+      scales:{ x:{beginAtZero:true,ticks:{precision:0}}, y:{ticks:{font:{size:11}}} },
+      plugins:{ legend:{display:true, position:'top', labels:{boxWidth:10,padding:12,font:{size:11}}} }
+    }
+  });
+}
+
+function renderKeywords(rows) {
+  if(!rows.length) return;
+  _mkChart('ch-kw', {
+    type:'bar',
+    data:{
+      labels: rows.map(r=>r.keyword),
+      datasets:[{ data:rows.map(r=>r.count), backgroundColor:rows.map((_,i)=>PALETTE[i%PALETTE.length]), borderRadius:4 }]
+    },
+    options:{
+      maintainAspectRatio:false, indexAxis:'y',
+      scales:{ x:{beginAtZero:true,ticks:{precision:0}}, y:{ticks:{font:{size:11,family:'monospace'}}} }
+    }
+  });
+}
+
+function renderHours(rows) {
+  const labels = rows.map(r=> r.hour===0?'12am': r.hour<12?`${r.hour}am`: r.hour===12?'12pm':`${r.hour-12}pm`);
+  const max    = Math.max(...rows.map(r=>r.count),1);
+  _mkChart('ch-hour', {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{ data:rows.map(r=>r.count), backgroundColor:rows.map(r=>{
+        const intensity = r.count/max;
+        return `rgba(59,130,246,${0.2+intensity*0.8})`;
+      }), borderRadius:3 }]
+    },
+    options:{
+      maintainAspectRatio:false,
+      scales:{ x:{ticks:{maxRotation:0,font:{size:10}}}, y:{beginAtZero:true,ticks:{precision:0}} }
+    }
+  });
+}
+
+function renderListenerChart(rows) {
+  if(!rows.length) return;
+  _mkChart('ch-listener', {
+    type:'bar',
+    data:{
+      labels:rows.map(r=>r.name),
+      datasets:[
+        { label:'Total',    data:rows.map(r=>r.count),    backgroundColor:C.blue,   borderRadius:4 },
+        { label:'Passed',   data:rows.map(r=>r.passed),   backgroundColor:C.emerald,borderRadius:4 },
+        { label:'Rejected', data:rows.map(r=>r.rejected), backgroundColor:C.red,    borderRadius:4, borderRadiusTopLeft:0,borderRadiusTopRight:0 },
+      ]
+    },
+    options:{
+      maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      scales:{ x:{ticks:{maxRotation:0}}, y:{beginAtZero:true,ticks:{precision:0}} },
+      plugins:{ legend:{display:true,position:'top',labels:{boxWidth:10,padding:12,font:{size:11}}} }
+    }
+  });
+}
+
+function renderDow(rows) {
+  const names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const max   = Math.max(...rows.map(r=>r.count),1);
+  _mkChart('ch-dow', {
+    type:'bar',
+    data:{
+      labels: rows.map(r=>names[r.dow]),
+      datasets:[{ data:rows.map(r=>r.count), backgroundColor:rows.map(r=>{
+        const i = r.count/max;
+        return `rgba(139,92,246,${0.2+i*0.8})`;
+      }), borderRadius:4 }]
+    },
+    options:{
+      maintainAspectRatio:false,
+      scales:{ x:{ticks:{maxRotation:0}}, y:{beginAtZero:true,ticks:{precision:0}} }
+    }
+  });
+}
+
+function renderSubPassRate(rows) {
+  if(!rows.length) return;
+  _mkChart('ch-sub-pass', {
+    type:'bar',
+    data:{
+      labels: rows.map(r=>`r/${r.name}`),
+      datasets:[{ data:rows.map(r=>r.rate), backgroundColor:rows.map(r=>{
+        const h = r.rate/100;
+        return `rgba(${Math.round(16+h*224-h*200)},${Math.round(185-h*30)},${Math.round(129-h*90)},0.85)`;
+      }), borderRadius:4 }]
+    },
+    options:{
+      maintainAspectRatio:false, indexAxis:'y',
+      scales:{
+        x:{ beginAtZero:true, max:100, ticks:{ callback:v=>v+'%' } },
+        y:{ ticks:{font:{size:11}} }
+      },
+      plugins:{ tooltip:{ callbacks:{ label:ctx=>`${ctx.raw}% pass rate (${rows[ctx.dataIndex].count} filtered)` } } }
+    }
+  });
+}
+
+function renderTopAuthors(rows) {
+  const el = document.getElementById('st-authors');
+  if(!rows.length) { el.innerHTML='<div class="text-slate-400 text-sm text-center py-6">No data yet</div>'; return; }
+  el.innerHTML = `
+    <table class="w-full text-sm">
+      <thead><tr class="text-xs text-slate-400 border-b border-slate-100">
+        <th class="text-left pb-2 font-medium">Author</th>
+        <th class="text-right pb-2 font-medium">Hits</th>
+        <th class="text-right pb-2 font-medium">Posts</th>
+        <th class="text-right pb-2 font-medium">Comments</th>
+        <th class="text-right pb-2 font-medium">Passed</th>
+      </tr></thead>
+      <tbody class="divide-y divide-slate-50">
+        ${rows.map((r,i)=>`
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="py-2 pr-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-300 w-4 text-right">${i+1}</span>
+                <a href="https://reddit.com/u/${esc(r.author)}" target="_blank" rel="noopener"
+                   class="font-medium text-slate-700 hover:text-blue-600 transition-colors">u/${esc(r.author)}</a>
+              </div>
+            </td>
+            <td class="py-2 text-right font-semibold text-slate-700">${r.count}</td>
+            <td class="py-2 text-right text-blue-600">${r.posts}</td>
+            <td class="py-2 text-right text-violet-600">${r.comments}</td>
+            <td class="py-2 text-right text-emerald-600">${r.passed||0}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function renderMonthlyTable(rows) {
+  const el = document.getElementById('st-monthly');
+  if(!rows.length) { el.innerHTML='<div class="text-slate-400 text-sm text-center py-6">No data yet</div>'; return; }
+  el.innerHTML = `
+    <table class="w-full text-sm">
+      <thead><tr class="text-xs text-slate-400 border-b border-slate-100">
+        <th class="text-left pb-2 font-medium">Month</th>
+        <th class="text-right pb-2 font-medium">Total</th>
+        <th class="text-right pb-2 font-medium">Posts</th>
+        <th class="text-right pb-2 font-medium">Comments</th>
+        <th class="text-right pb-2 font-medium">AI Passed</th>
+        <th class="text-right pb-2 font-medium">Pass rate</th>
+      </tr></thead>
+      <tbody class="divide-y divide-slate-50">
+        ${rows.map(r=>{
+          const rate = r.passed&&r.total ? Math.round(r.passed/r.total*100) : 0;
+          return `<tr class="hover:bg-slate-50 transition-colors">
+            <td class="py-2 font-medium text-slate-700">${r.month}</td>
+            <td class="py-2 text-right font-semibold text-slate-800">${r.total.toLocaleString()}</td>
+            <td class="py-2 text-right text-blue-600">${r.posts.toLocaleString()}</td>
+            <td class="py-2 text-right text-violet-600">${r.comments.toLocaleString()}</td>
+            <td class="py-2 text-right text-emerald-600">${r.passed.toLocaleString()}</td>
+            <td class="py-2 text-right">
+              <span class="inline-flex items-center gap-1">
+                <span class="text-slate-600">${rate}%</span>
+                <span class="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden inline-block">
+                  <span class="h-full bg-emerald-400 rounded-full block" style="width:${rate}%"></span>
+                </span>
+              </span>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ── Logs ─────────────────────────────────────────────────────────────────────
+let slOffset = 0, wlOffset = 0, activeLogTab = 'system';
+
+function switchLogTab(tab) {
+  activeLogTab = tab;
+  document.getElementById('lp-system').classList.toggle('hidden', tab !== 'system');
+  document.getElementById('lp-webhook').classList.toggle('hidden', tab !== 'webhook');
+  document.getElementById('lt-system').classList.toggle('active', tab === 'system');
+  document.getElementById('lt-webhook').classList.toggle('active', tab === 'webhook');
+  if (tab === 'system')  loadSystemLogs();
+  else                   loadWebhookLogs();
+}
+
+async function loadSystemLogs(more = false) {
+  if (!more) slOffset = 0;
+  const level  = document.getElementById('sl-level')?.value || '';
+  const params = new URLSearchParams({ limit: 100, offset: slOffset, ...(level ? { level } : {}) });
+  const data   = await apiFetch(`/api/logs/system?${params}`).catch(() => ({ logs:[], total:0 }));
+
+  const container = document.getElementById('sl-table');
+  if (!more) {
+    if (!data.logs?.length) {
+      container.innerHTML = '<div class="text-slate-400 text-sm text-center py-10">No system logs yet.</div>';
+      document.getElementById('sl-more').classList.add('hidden');
+      return;
+    }
+    container.innerHTML = `
+      <table class="w-full text-xs">
+        <thead><tr class="text-slate-400 border-b border-slate-100 bg-slate-50">
+          <th class="text-left px-4 py-2.5 font-medium w-40">Time</th>
+          <th class="text-left px-4 py-2.5 font-medium w-16">Level</th>
+          <th class="text-left px-4 py-2.5 font-medium">Message</th>
+        </tr></thead>
+        <tbody id="sl-body" class="divide-y divide-slate-50"></tbody>
+      </table>`;
+  }
+  const tbody = document.getElementById('sl-body');
+  for (const log of (data.logs || [])) {
+    const cls = log.level==='ERROR' ? 'text-red-600 bg-red-50' : log.level==='WARN' ? 'text-amber-600 bg-amber-50' : 'text-slate-400';
+    const ts  = new Date((log.ts||0)*1000).toLocaleString('en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const tr  = document.createElement('tr');
+    tr.className = 'hover:bg-slate-50 transition-colors';
+    tr.innerHTML = `
+      <td class="px-4 py-2.5 text-slate-400 whitespace-nowrap font-mono text-[11px]">${esc(ts)}</td>
+      <td class="px-4 py-2.5"><span class="px-1.5 py-0.5 rounded-md font-semibold text-[11px] ${cls}">${esc(log.level||'INFO')}</span></td>
+      <td class="px-4 py-2.5 text-slate-700 leading-relaxed">${esc(log.message||'')}</td>`;
+    tbody.appendChild(tr);
+  }
+  slOffset += (data.logs||[]).length;
+  document.getElementById('sl-more').classList.toggle('hidden', slOffset >= (data.total||0));
+}
+
+async function loadWebhookLogs(more = false) {
+  if (!more) wlOffset = 0;
+  const status = document.getElementById('wl-status')?.value || '';
+  const params = new URLSearchParams({ limit: 50, offset: wlOffset, ...(status ? { status } : {}) });
+  const data   = await apiFetch(`/api/logs/webhooks?${params}`).catch(() => ({ logs:[], total:0 }));
+
+  const container = document.getElementById('wl-table');
+  if (!more) {
+    if (!data.logs?.length) {
+      container.innerHTML = '<div class="text-slate-400 text-sm text-center py-10">No webhook logs yet.</div>';
+      document.getElementById('wl-more').classList.add('hidden');
+      return;
+    }
+    container.innerHTML = `
+      <table class="w-full text-xs">
+        <thead><tr class="text-slate-400 border-b border-slate-100 bg-slate-50">
+          <th class="text-left px-4 py-2.5 font-medium w-36">Time</th>
+          <th class="text-left px-4 py-2.5 font-medium w-16">Status</th>
+          <th class="text-left px-4 py-2.5 font-medium w-10 text-center">Tries</th>
+          <th class="text-left px-4 py-2.5 font-medium">URL</th>
+          <th class="text-left px-4 py-2.5 font-medium">Response</th>
+          <th class="px-4 py-2.5 w-16"></th>
+        </tr></thead>
+        <tbody id="wl-body" class="divide-y divide-slate-50"></tbody>
+      </table>`;
+  }
+  const tbody = document.getElementById('wl-body');
+  for (const log of (data.logs || [])) {
+    const sCls = log.status==='ok' ? 'text-emerald-700 bg-emerald-50 border border-emerald-100'
+               : log.status==='failed' ? 'text-red-600 bg-red-50 border border-red-100'
+               : 'text-amber-600 bg-amber-50 border border-amber-100';
+    const ts  = new Date((log.ts||0)*1000).toLocaleString('en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    const tr  = document.createElement('tr');
+    tr.id     = `wl-row-${log.id}`;
+    tr.className = 'hover:bg-slate-50 transition-colors';
+    tr.innerHTML = `
+      <td class="px-4 py-2.5 text-slate-400 whitespace-nowrap font-mono text-[11px]">${esc(ts)}</td>
+      <td class="px-4 py-2.5"><span class="px-1.5 py-0.5 rounded-md font-semibold text-[11px] ${sCls}">${esc(log.status||'')}</span></td>
+      <td class="px-4 py-2.5 text-slate-500 text-center">${log.attempts||0}</td>
+      <td class="px-4 py-2.5 text-slate-600 font-mono truncate max-w-[200px]" title="${esc(log.url||'')}">${esc(log.url||'')}</td>
+      <td class="px-4 py-2.5 text-slate-500 truncate max-w-[200px]">${esc(log.last_response||'—')}</td>
+      <td class="px-4 py-2.5 text-right">
+        ${log.status!=='ok' ? `<button onclick="retryWebhook(${log.id})" class="text-[11px] px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 font-medium transition-colors">Retry</button>` : ''}
+      </td>`;
+    tbody.appendChild(tr);
+  }
+  wlOffset += (data.logs||[]).length;
+  document.getElementById('wl-more').classList.toggle('hidden', wlOffset >= (data.total||0));
+}
+
+async function retryWebhook(id) {
+  const r = await apiFetch(`/api/logs/webhooks/${id}/retry`, { method:'POST' }).catch(()=>({ok:false}));
+  if (r.ok) { showToast('Webhook queued for retry', 'green'); setTimeout(loadWebhookLogs, 1000); }
+  else showToast(r.detail || 'Retry failed', 'red');
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function timeAgo(ms){if(!ms)return'';const s=Math.floor((Date.now()-ms)/1000);if(s<60)return`${s}s ago`;if(s<3600)return`${Math.floor(s/60)}m ago`;if(s<86400)return`${Math.floor(s/3600)}h ago`;return`${Math.floor(s/86400)}d ago`;}
+function showToast(msg, color = 'gray') {
+  const dot = { blue:'bg-blue-400', red:'bg-red-400', green:'bg-emerald-400', gray:'bg-slate-500' }[color] || 'bg-slate-500';
+  const container = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast flex items-center gap-2.5 bg-slate-900 text-white text-xs font-medium px-3.5 py-2.5 rounded-xl pointer-events-auto max-w-xs';
+  t.style.cssText = 'box-shadow:0 4px 16px rgba(0,0,0,.18);backdrop-filter:blur(8px)';
+  t.innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${dot} flex-shrink-0"></span><span class="truncate">${esc(msg)}</span>`;
+  container.appendChild(t);
+  setTimeout(() => {
+    t.classList.replace('toast', 'toast-out');
+    setTimeout(() => t.remove(), 200);
+  }, 3200);
+}
+</script>
+<!-- ── Reply drafting panel ─────────────────────────────────────────────── -->
+<div id="reply-backdrop" class="panel-backdrop hidden" onclick="closeReplyPanel()"></div>
+<div id="reply-panel" class="side-panel hidden">
+  <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+    <div>
+      <h2 class="font-semibold text-slate-900">Draft Reply</h2>
+      <p class="text-xs text-slate-400 mt-0.5">Claude writes a context-aware, non-spammy reply</p>
+    </div>
+    <button onclick="closeReplyPanel()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 text-xl">×</button>
+  </div>
+  <div class="flex-1 overflow-y-auto p-6 space-y-5">
+    <!-- Post context -->
+    <div id="rp-context" class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-1.5">
+      <div id="rp-sub"     class="text-xs font-semibold text-orange-500"></div>
+      <div id="rp-title"   class="text-sm font-medium text-slate-800 leading-snug"></div>
+      <div id="rp-excerpt" class="text-xs text-slate-500 line-clamp-3"></div>
+    </div>
+    <!-- Product context -->
+    <div>
+      <label class="text-sm font-medium text-slate-700 block mb-1.5">Your product / context
+        <span class="text-xs font-normal text-slate-400 ml-1">saved automatically</span>
+      </label>
+      <textarea id="rp-product" rows="3" class="inp text-sm"
+        placeholder="What are you selling? What problem does it solve? Who is it for? (used in all replies)"
+        oninput="debounceSaveProduct(this.value)"></textarea>
+    </div>
+    <!-- Tone -->
+    <div>
+      <div class="text-sm font-medium text-slate-700 mb-2">Tone</div>
+      <div class="flex gap-2 flex-wrap" id="rp-tones">
+        <button onclick="setTone('helpful')"      class="tone-btn active text-xs px-3 py-1.5 rounded-lg border font-medium transition-all">Helpful</button>
+        <button onclick="setTone('casual')"       class="tone-btn text-xs px-3 py-1.5 rounded-lg border font-medium transition-all">Casual</button>
+        <button onclick="setTone('professional')" class="tone-btn text-xs px-3 py-1.5 rounded-lg border font-medium transition-all">Professional</button>
+        <button onclick="setTone('direct')"       class="tone-btn text-xs px-3 py-1.5 rounded-lg border font-medium transition-all">Direct</button>
+      </div>
+    </div>
+    <!-- Generate -->
+    <button id="rp-generate-btn" onclick="generateReply()"
+      class="w-full px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m13 2-2 2.5h3L12 15"/><path d="M9.42 7.89 3.5 14h4l-2 8 9.08-10.11H11l2-8z"/></svg>
+      Generate Reply
+    </button>
+    <!-- Generated reply -->
+    <div id="rp-result" class="hidden space-y-3">
+      <div class="text-sm font-medium text-slate-700">Generated reply <span class="text-xs font-normal text-slate-400">— edit before using</span></div>
+      <textarea id="rp-reply-text" rows="5" class="inp text-sm"></textarea>
+      <div class="flex gap-2">
+        <button onclick="copyReply()"
+          class="flex-1 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-colors">
+          Copy to clipboard
+        </button>
+        <button onclick="saveReplyDraft()"
+          class="px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-sm font-medium transition-colors">
+          Save draft
+        </button>
+        <a id="rp-open-link" href="#" target="_blank" rel="noopener"
+          class="px-3 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-sm font-medium transition-colors">
+          ↗ Open post
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Thread view panel ─────────────────────────────────────────────────── -->
+<div id="thread-backdrop" class="panel-backdrop hidden" onclick="closeThreadPanel()"></div>
+<div id="thread-panel" class="side-panel hidden">
+  <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+    <div>
+      <h2 class="font-semibold text-slate-900">Thread</h2>
+      <p id="thread-meta" class="text-xs text-slate-400 mt-0.5"></p>
+    </div>
+    <button onclick="closeThreadPanel()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 text-xl">×</button>
+  </div>
+  <div id="thread-body" class="flex-1 overflow-y-auto p-6 space-y-4">
+    <div class="text-center text-slate-400 py-12">
+      <div class="spin text-2xl mb-2">⟳</div>
+      <div class="text-sm">Loading thread…</div>
+    </div>
+  </div>
+</div>
+
+<!-- toast stack -->
+<div id="toast-container" class="fixed bottom-5 right-5 flex flex-col gap-2 z-50 pointer-events-none"></div>
+
+</body>
+</html>

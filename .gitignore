@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# App data
+data/
+*.db
+*.db-shm
+*.db-wal
+logs/
+*.log
+
+# Config with secrets
+.env
+config.json
+config.json.bak
+
+# OS
+.DS_Store
+
+# Docker
+.docker/
+
+# IDE
+.vscode/
+.idea/
+
+# Claude
+.claude/
+
+# Preview helper (not part of the app)
+static/readme-preview.html

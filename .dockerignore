@@ -1,0 +1,10 @@
+.venv
+__pycache__
+*.pyc
+.env
+data/
+logs/
+config.json
+config.json.bak
+redsignal.db
+*.log
