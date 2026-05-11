@@ -13,7 +13,7 @@ export default function Logs() {
         <div className="flex gap-0.5 bg-slate-100 rounded-xl p-1">
           <button onClick={() => setTab('system')} className={`tab ${tab === 'system' ? 'active' : ''}`}>System</button>
           <button onClick={() => setTab('webhooks')} className={`tab ${tab === 'webhooks' ? 'active' : ''}`}>Webhooks</button>
-          <button onClick={() => setTab('file')} className={`tab ${tab === 'file' ? 'active' : ''}`}>File</button>
+          <button onClick={() => setTab('file')} className={`tab ${tab === 'file' ? 'active' : ''}`}>Console</button>
         </div>
       </div>
       <div className="flex-1 overflow-hidden">
