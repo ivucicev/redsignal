@@ -74,7 +74,7 @@ export default function Nav({ activeTab, setActiveTab, wsStatus }) {
         <img
           src={dark ? '/logo-dark.png' : '/logo-white.png'}
           alt="RedSignal"
-          className="h-7 w-auto"
+          className="h-10 w-auto"
         />
       </div>
 
