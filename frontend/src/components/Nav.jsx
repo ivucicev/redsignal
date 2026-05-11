@@ -70,16 +70,12 @@ export default function Nav({ activeTab, setActiveTab, wsStatus }) {
       className="bg-white border-b border-slate-100 px-5 py-3 flex items-center gap-5 flex-shrink-0"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,.06)' }}
     >
-      <div className="flex items-center gap-2.5 select-none flex-shrink-0">
-        <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center text-white"
-          style={{ background: 'linear-gradient(135deg,#ef4444,#f97316)' }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M2 12h3m14 0h3M12 2v3m0 14v3M4.93 4.93l2.12 2.12m9.9 9.9 2.12 2.12M4.93 19.07l2.12-2.12m9.9-9.9 2.12-2.12" />
-          </svg>
-        </div>
-        <span className="font-bold text-slate-900 text-[15px]">RedSignal</span>
+      <div className="flex items-center select-none flex-shrink-0">
+        <img
+          src={dark ? '/logo-white.png' : '/logo-dark.png'}
+          alt="RedSignal"
+          className="h-7 w-auto"
+        />
       </div>
 
       <nav className="flex gap-0.5 bg-slate-100 rounded-xl p-1 flex-shrink-0">
