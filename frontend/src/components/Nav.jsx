@@ -3,7 +3,8 @@ import { useApp } from '../context.jsx';
 import { apiFetch } from '../api.js';
 
 export default function Nav({ activeTab, setActiveTab, wsStatus }) {
-  const { addToast } = useApp();
+  const { addToast, listenerStatus, setListenerStatus } = useApp();
+  const anyRunning = Object.values(listenerStatus).some(Boolean);
   const [dark, setDark] = useState(false);
   const [browserNotif, setBrowserNotif] = useState(false);
 
@@ -52,14 +53,21 @@ export default function Nav({ activeTab, setActiveTab, wsStatus }) {
     }
   }
 
+  async function refreshStatus() {
+    const s = await apiFetch('/api/listeners/status').catch(() => null);
+    if (s) setListenerStatus(s);
+  }
+
   async function startAll() {
     const r = await apiFetch('/api/monitor/start', { method: 'POST' });
     if (r.started?.length) addToast(`Started: ${r.started.join(', ')}`, 'green');
     else if (!r.ok) addToast(r.message || 'Nothing to start', 'red');
+    setTimeout(refreshStatus, 800);
   }
 
   async function stopAll() {
     await apiFetch('/api/monitor/stop', { method: 'POST' });
+    setTimeout(refreshStatus, 800);
   }
 
   const tabs = ['stream', 'analytics', 'vault', 'listeners', 'logs'];
@@ -141,7 +149,12 @@ export default function Nav({ activeTab, setActiveTab, wsStatus }) {
 
         <button
           onClick={startAll}
-          className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-colors"
+          disabled={anyRunning}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+            anyRunning
+              ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              : 'bg-slate-900 hover:bg-slate-800 text-white'
+          }`}
         >
           <svg width="9" height="11" viewBox="0 0 9 11" fill="currentColor">
             <path d="M0 0l9 5.5L0 11V0z" />
@@ -150,7 +163,12 @@ export default function Nav({ activeTab, setActiveTab, wsStatus }) {
         </button>
         <button
           onClick={stopAll}
-          className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-medium border border-slate-200 transition-colors"
+          disabled={!anyRunning}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${
+            anyRunning
+              ? 'bg-white hover:bg-red-50 text-red-600 border-red-200'
+              : 'bg-white text-slate-300 border-slate-200 cursor-not-allowed'
+          }`}
         >
           <svg width="9" height="9" viewBox="0 0 9 9" fill="currentColor">
             <rect width="9" height="9" rx="1.5" />

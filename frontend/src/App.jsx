@@ -17,12 +17,15 @@ function AppInner() {
   const [newHit, setNewHit] = useState(null);
   const [wsHitCount, setWsHitCount] = useState(0);
 
-  // Load config on mount
+  // Load config and listener status on mount
   useEffect(() => {
     apiFetch('/api/config').then(data => {
       if (data) setCfg(data);
     }).catch(() => {});
-  }, [setCfg]);
+    apiFetch('/api/listeners/status').then(data => {
+      if (data) setListenerStatus(data);
+    }).catch(() => {});
+  }, [setCfg, setListenerStatus]);
 
   const handleHit = useCallback((msg) => {
     const hit = msg.data || msg;
