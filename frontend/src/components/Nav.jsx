@@ -72,7 +72,7 @@ export default function Nav({ activeTab, setActiveTab, wsStatus }) {
     >
       <div className="flex items-center select-none flex-shrink-0">
         <img
-          src={dark ? '/logo-white.png' : '/logo-dark.png'}
+          src={dark ? '/logo-dark.png' : '/logo-white.png'}
           alt="RedSignal"
           className="h-7 w-auto"
         />
