@@ -57,6 +57,7 @@ textarea.inp { resize:vertical }
 
 * { box-sizing:border-box }
 body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif }
+button { cursor:pointer }
 
 /* ── Dark mode ── */
 html.dark body               { background:#0f172a!important;color:#e2e8f0!important }
