@@ -68,6 +68,8 @@ async def ws_endpoint(ws: WebSocket) -> None:
 
 
 Path("static").mkdir(exist_ok=True)
+Path("static/assets").mkdir(exist_ok=True)
+app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
