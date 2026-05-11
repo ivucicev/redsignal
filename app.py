@@ -73,6 +73,11 @@ app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> FileResponse:
+    return FileResponse("static/favicon.ico")
+
+
 @app.get("/")
 def index() -> FileResponse:
     return FileResponse("static/index.html")
