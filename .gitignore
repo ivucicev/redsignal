@@ -12,6 +12,7 @@ data/
 *.db-wal
 logs/
 *.log
+!frontend/src/**/logs/
 
 # Config with secrets
 .env
