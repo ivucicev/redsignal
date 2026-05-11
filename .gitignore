@@ -35,3 +35,6 @@ config.json.bak
 static/readme-preview.html
 
 CLAUDE.md
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
