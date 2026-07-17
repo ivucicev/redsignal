@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="320" viewBox="0 0 1200 320"
+     role="img" aria-labelledby="rs-mech-title rs-mech-desc">
+  <title id="rs-mech-title">How RedSignal turns Reddit posts into leads</title>
+  <desc id="rs-mech-desc">Diagram: subreddits feed a PRAW listener stream, which applies keyword regex matching, optionally passes through an AI filter, and lands in the live feed with Slack or Telegram alerts.</desc>
+
+  <rect width="1200" height="320" rx="26" fill="#0b0b0a"/>
+  <rect x="0.5" y="0.5" width="1199" height="319" rx="25.5" fill="none" stroke="#232320"/>
+
+  <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+
+    <!-- connectors: main path -->
+    <path d="M250 170 L320 170" stroke="#5a5a53" stroke-width="1.6" fill="none"/>
+    <path d="M320 170 L312 165.5 L312 174.5 Z" fill="#5a5a53"/>
+    <path d="M520 170 L590 170" stroke="#5a5a53" stroke-width="1.6" fill="none"/>
+    <path d="M590 170 L582 165.5 L582 174.5 Z" fill="#5a5a53"/>
+    <path d="M800 170 L940 170" stroke="#5a5a53" stroke-width="1.6" fill="none"/>
+    <path d="M940 170 L932 165.5 L932 174.5 Z" fill="#5a5a53"/>
+
+    <!-- optional AI branch -->
+    <path d="M700 124 C 700 90, 760 78, 786 68" stroke="#8a5a45" stroke-width="1.4" fill="none" stroke-dasharray="4 4"/>
+    <path d="M786 68 L777 66 L781.5 74 Z" fill="#8a5a45"/>
+    <path d="M964 68 C 992 78, 1050 100, 1050 122" stroke="#8a5a45" stroke-width="1.4" fill="none" stroke-dasharray="4 4"/>
+    <path d="M1050 122 L1045.5 113 L1054.5 115.5 Z" fill="#8a5a45"/>
+    <text x="742" y="103" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="11" fill="#8a5a45">optional</text>
+
+    <!-- node 1: subreddits -->
+    <g transform="translate(60 124)">
+      <rect width="190" height="92" rx="14" fill="#131311" stroke="#262620"/>
+      <g transform="translate(18 20)">
+        <circle cx="7" cy="7" r="7" fill="#2a2a24" stroke="#3a3a32"/>
+        <circle cx="27" cy="7" r="7" fill="#2a2a24" stroke="#3a3a32"/>
+        <circle cx="47" cy="7" r="7" fill="#2a2a24" stroke="#3a3a32"/>
+      </g>
+      <text x="18" y="54" font-size="15" font-weight="700" fill="#f0efe9">Subreddits</text>
+      <text x="18" y="74" font-size="11.5" fill="#82817a" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">r/saas+r/entrepreneur</text>
+    </g>
+
+    <!-- node 2: listener -->
+    <g transform="translate(330 124)">
+      <rect width="190" height="92" rx="14" fill="#131311" stroke="#262620"/>
+      <text x="18" y="38" font-size="15" font-weight="700" fill="#f0efe9">Listener</text>
+      <text x="18" y="58" font-size="11.5" fill="#82817a" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">PRAW stream</text>
+      <text x="18" y="74" font-size="11.5" fill="#82817a" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">background thread</text>
+    </g>
+
+    <!-- node 3: keyword match -->
+    <g transform="translate(600 124)">
+      <rect width="200" height="92" rx="14" fill="#131311" stroke="#262620"/>
+      <text x="18" y="38" font-size="15" font-weight="700" fill="#f0efe9">Keyword match</text>
+      <text x="18" y="58" font-size="11.5" fill="#82817a" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">/work\Wtool/i</text>
+      <text x="18" y="74" font-size="11.5" fill="#82817a" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">python regex, per listener</text>
+    </g>
+
+    <!-- node AI filter (optional) -->
+    <g transform="translate(775 20)">
+      <rect width="200" height="76" rx="14" fill="#171210" stroke="#5a3a2c" stroke-width="1.2" stroke-dasharray="4 4"/>
+      <text x="18" y="30" font-size="14" font-weight="700" fill="#e8ab8f">AI filter</text>
+      <text x="18" y="49" font-size="11" fill="#9c8a80" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">Claude · OpenAI · Ollama</text>
+      <text x="18" y="64" font-size="11" fill="#9c8a80" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">"is this a real lead?"</text>
+    </g>
+
+    <!-- node 4: feed + alerts -->
+    <g transform="translate(950 124)">
+      <rect width="196" height="92" rx="14" fill="#1c130d" stroke="#c8401f" stroke-width="1.4"/>
+      <text x="18" y="38" font-size="15" font-weight="700" fill="#f6f5f2">Feed + alerts</text>
+      <text x="18" y="58" font-size="11.5" fill="#c9a996" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">live feed · WebSocket</text>
+      <text x="18" y="74" font-size="11.5" fill="#c9a996" font-family="ui-monospace,SFMono-Regular,Menlo,monospace">Slack · Telegram</text>
+    </g>
+  </g>
+</svg>
